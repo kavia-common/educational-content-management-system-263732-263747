@@ -27,6 +27,7 @@ export default function PathsAuthoringPage() {
 
   const load = async () => {
     setLoading(true);
+    setErr(null);
     try {
       const data = await authoringService.listPaths();
       setItems(Array.isArray(data) ? data : data?.items || []);
@@ -62,6 +63,7 @@ export default function PathsAuthoringPage() {
     e.preventDefault();
     if (saving) return;
     setSaving(true);
+    setErr(null);
     try {
       if (isEditing) {
         await authoringService.updatePath(form.id, {
@@ -94,6 +96,7 @@ export default function PathsAuthoringPage() {
   const handleDelete = async (id) => {
     if (!id || saving) return;
     setSaving(true);
+    setErr(null);
     try {
       await authoringService.deletePath(id);
       if (form.id === id) resetForm();
@@ -106,12 +109,12 @@ export default function PathsAuthoringPage() {
   };
 
   return (
-    <div className="vstack">
+    <div className="vstack" aria-live="polite">
       <h1 className="page-title">Authoring: Learning Paths</h1>
       <p className="page-subtitle">Create, edit, and delete learning paths.</p>
 
       {err && <div className="card" style={{ borderColor: "var(--color-error)" }}>An error occurred. Please try again.</div>}
-      {loading && <div className="card">Loading...</div>}
+      {loading && <div className="card" role="status" aria-busy="true">Loading...</div>}
 
       <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div className="card">
@@ -177,7 +180,11 @@ export default function PathsAuthoringPage() {
                 </div>
               </div>
             ))}
-            {(!Array.isArray(items) || items.length === 0) && <div className="page-subtitle">No paths yet.</div>}
+            {(!Array.isArray(items) || items.length === 0) && !loading && !err && (
+              <div className="page-subtitle">
+                No paths yet. Use the form to create your first learning path.
+              </div>
+            )}
           </div>
         </div>
       </div>

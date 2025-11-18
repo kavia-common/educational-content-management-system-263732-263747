@@ -39,10 +39,12 @@ function AdminRoute({ children }) {
   return children;
 }
 
-// PUBLIC_INTERFACE
+/* PUBLIC_INTERFACE */
 function AuthorRoute({ children }) {
   /**
-   * Route guard for authoring: allows roles 'admin' and 'instructor' only.
+   * Route guard for authoring tools.
+   * Authorization: role must be "admin" or "instructor".
+   * Returns an inline Unauthorized state if access is denied.
    */
   const { user, initializing } = useAuth();
   if (initializing) return <div style={{ padding: 24 }}>Loading...</div>;

@@ -5,20 +5,22 @@ import { useAuth } from "../context/AuthContext";
 
 // PUBLIC_INTERFACE
 export default function Sidebar() {
-  /** Sidebar navigation for main sections. */
+  /** Sidebar navigation for main sections (role-aware authoring links). */
   const { user } = useAuth();
-  const canAuthor = user?.role === "admin" || user?.role === "instructor";
+  const isAuthed = !!user;
+  const isAdmin = user?.role === "admin";
+  const canAuthor = isAdmin || user?.role === "instructor";
 
   return (
-    <aside className="sidebar">
-      <nav>
+    <aside className="sidebar" aria-label="Primary">
+      <nav aria-live="polite" aria-busy={!isAuthed ? "true" : "false"}>
         <NavLink to="/dashboard" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
           Dashboard
         </NavLink>
         <NavLink to="/employee/dashboard" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
           Employee Dashboard
         </NavLink>
-        {user?.role === "admin" && (
+        {isAdmin && (
           <NavLink to="/admin/dashboard" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
             Admin Dashboard
           </NavLink>
@@ -36,7 +38,7 @@ export default function Sidebar() {
           Grades
         </NavLink>
 
-        {canAuthor && (
+        {isAuthed && canAuthor && (
           <>
             <div className="page-subtitle" style={{ margin: "12px 8px 4px", color: "#8FA0B8" }}>
               Authoring
