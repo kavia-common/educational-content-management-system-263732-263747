@@ -1,6 +1,8 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import "../components/layout.css";
 import { useFeatureFlags } from "../context/FeatureFlagsContext";
+import { isSupabaseMode } from "../lib/supabaseClient";
+import { seedLessons } from "../seeds/lessonsSeed";
 
 /**
  * PUBLIC_INTERFACE
@@ -10,11 +12,14 @@ import { useFeatureFlags } from "../context/FeatureFlagsContext";
  * - app version: from package.json if available
  * - environment: REACT_APP_NODE_ENV
  * - enabled flags: list of feature flags enabled
+ * - Optional: admin-only seed button (FLAG_ALLOW_SEED=true) to populate course lessons in Supabase mode
  *
- * This page displays no secrets and performs no network calls.
+ * This page displays no secrets and performs no sensitive logging.
  */
 export default function HealthPage() {
-  const { flags, experimentsEnabled } = useFeatureFlags();
+  const { flags, experimentsEnabled, isEnabled } = useFeatureFlags();
+  const [seedMsg, setSeedMsg] = useState("");
+  const [seeding, setSeeding] = useState(false);
 
   // Avoid showing URLs, keys or any sensitive envs. Only expose safe, generic info.
   const version = process.env.REACT_APP_VERSION || process.env.npm_package_version || "unknown";
@@ -29,6 +34,24 @@ export default function HealthPage() {
     });
     return out;
   }, [flags]);
+
+  const canSeed = (isEnabled("FLAG_ALLOW_SEED") || flags.FLAG_ALLOW_SEED === true) && isSupabaseMode();
+
+  const handleSeed = async () => {
+    if (!canSeed || seeding) return;
+    setSeeding(true);
+    setSeedMsg("");
+    try {
+      const result = await seedLessons();
+      setSeedMsg(`Seed successful: upserted ${result.total} lessons.`);
+    } catch (e) {
+      // Show concise message without sensitive details
+      const msg = e?.message || "Seed failed";
+      setSeedMsg(`Seed failed: ${msg}`);
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   return (
     <div className="vstack" style={{ padding: 24 }}>
@@ -69,6 +92,35 @@ export default function HealthPage() {
             </strong>
           </div>
         </div>
+
+        {canSeed && (
+          <div className="card">
+            <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+              <strong>Seed Utilities</strong>
+              <span className="page-subtitle" style={{ margin: 0 }}>Admin-only action</span>
+            </div>
+            <div className="hstack" style={{ gap: 8 }}>
+              <button
+                className="btn btn-primary"
+                onClick={handleSeed}
+                disabled={seeding}
+                aria-label="Seed course lessons into Supabase"
+              >
+                {seeding ? "Seeding..." : "Seed Course Lessons"}
+              </button>
+            </div>
+            {seedMsg && (
+              <div className="page-subtitle" style={{ marginTop: 8 }}>
+                {seedMsg}
+              </div>
+            )}
+            {!isSupabaseMode() && (
+              <div className="page-subtitle" style={{ marginTop: 8, color: "var(--color-error)" }}>
+                Supabase mode disabled. Enable FLAG_SUPABASE_MODE to use seed utilities.
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

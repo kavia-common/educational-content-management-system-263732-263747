@@ -89,11 +89,36 @@ Tables and RLS assumptions:
 - courses(id uuid pk, title text, description text, instructor text, path_id uuid, video_url text, embed_url text): RLS: select for all authenticated; writes limited to instructors/admins
 - enrollments(user_id uuid, course_id uuid, status text, created_at timestamptz): RLS: user can manage own rows
 - user_course_progress(user_id uuid, course_id uuid, progress_percent int, status text, time_spent_seconds int, updated_at timestamptz): RLS: user can manage own rows
+- course_lessons(id uuid pk default gen_random_uuid(), course_id uuid references courses(id), title text, thumbnail text null, duration int null, sequence int not null)
+  - Unique constraint recommended on (course_id, title) to support idempotent upserts
+  - RLS: select for authenticated users; insert/update/delete restricted to instructors/admins
 
 Security considerations:
 - Only anon key in frontend; rely on RLS to scope data
 - Never expose service role key
 - Validate RLS policies to ensure users can only see their own enrollments/progress and public course/path data
+
+### Seeding Course Lessons (Frontend-only, Feature-flagged)
+This app ships with a lightweight seeding utility to insert static lesson data into the `course_lessons` table using the Supabase browser SDK.
+
+Prerequisites:
+- Supabase mode enabled: include `FLAG_SUPABASE_MODE=true` in `REACT_APP_FEATURE_FLAGS`
+- Allow seed (admin-only): include `FLAG_ALLOW_SEED=true` in `REACT_APP_FEATURE_FLAGS`
+- Ensure `course_lessons` table exists with RLS and a unique index on `(course_id, title)`
+
+How to run:
+1) Start the app with Supabase flags enabled. Example:
+   REACT_APP_FEATURE_FLAGS='{"FLAG_SUPABASE_MODE":true,"FLAG_ALLOW_SEED":true}'
+2) Navigate to the Health page (`/health` or the configured `REACT_APP_HEALTHCHECK_PATH`).
+3) Click "Seed Course Lessons". A concise success or error message will appear.
+
+Notes:
+- The seeder uses upsert with `onConflict: "course_id,title"` meaning repeated runs are idempotent.
+- Default data is embedded in `src/seeds/lessonsSeed.js`. You can supply your own fixtures by importing and calling `seedLessons(customSets)` in code, or by editing `src/seeds/fixtures/lessons.json` and adapting the importer.
+- No secrets are logged; errors are displayed briefly without sensitive content.
+
+Schema (SQL DDL example):
+See assets/supabase.md for a full SQL snippet including RLS policies and uniqueness constraints.
 
 ## Backend Proxy Mode (Summary)
 Same as described previously (see kavia-docs/backend-proxy-contract.md). When auth is re-enabled the app will use:

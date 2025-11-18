@@ -1,0 +1,10 @@
+[
+  {
+    "courseId": "00000000-0000-0000-0000-000000000001",
+    "lessons": [
+      { "title": "Intro to React", "thumbnail": null, "duration": 8, "sequence": 1 },
+      { "title": "Components & Props", "thumbnail": null, "duration": 12, "sequence": 2 },
+      { "title": "State & Effects", "thumbnail": null, "duration": 14, "sequence": 3 }
+    ]
+  }
+]
