@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import CourseCard from '../components/CourseCard';
 import { listCourses, enroll } from '../services/coursesService';
-import { isSupabaseMode } from '../lib/supabaseClient';
 
 /**
  * PUBLIC_INTERFACE
@@ -49,9 +48,7 @@ const CoursesPage = () => {
   if (!courses.length) {
     return (
       <div className="text-gray-600">
-        {!isSupabaseMode()
-          ? 'Supabase is not configured. Configure REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_KEY to load data.'
-          : 'No courses available.'}
+        No courses available.
       </div>
     );
   }

@@ -1,22 +1,11 @@
-import { getSupabase, isSupabaseMode } from "../lib/supabaseClient";
-import { DATA_SOURCE } from "../lib/dataMode";
-import { learningPaths, courses as seedCourses } from "../data/seed";
+import { getSupabase } from "../lib/supabaseClient";
 
 /**
  * PUBLIC_INTERFACE
  * listPaths
- * Public list of learning paths.
- * In local mode, returns seed data with thumbnail mapped to thumbnail_url for UI compatibility.
+ * Public list of learning paths (Supabase only).
  */
 export async function listPaths() {
-  if (DATA_SOURCE === "local") {
-    return learningPaths.map((p) => ({
-      ...p,
-      thumbnail_url: p.thumbnail ?? p.thumbnail_url ?? null,
-    }));
-  }
-  // When Supabase mode is disabled or misconfigured, return empty list to avoid Failed to fetch
-  if (!isSupabaseMode()) return [];
   try {
     const supabase = getSupabase();
     const { data, error } = await supabase
@@ -26,7 +15,6 @@ export async function listPaths() {
     if (error) throw error;
     return data || [];
   } catch (e) {
-    // Defensive: surface empty dataset to UI instead of throwing network errors
     // eslint-disable-next-line no-console
     console.warn("listPaths fallback to empty due to error:", e?.message || e);
     return [];
@@ -36,29 +24,9 @@ export async function listPaths() {
 /**
  * PUBLIC_INTERFACE
  * getPathById
- * Fetch a learning path by id and include its courses.
- * In local mode, also injects the courses for the path.
+ * Fetch a learning path by id and include its courses. Supabase-only.
  */
 export async function getPathById(id) {
-  if (DATA_SOURCE === "local") {
-    const pid = typeof id === "string" ? parseInt(id, 10) : id;
-    const path = learningPaths.find((p) => p.id === pid);
-    if (!path) return null;
-    const pathCourses = seedCourses
-      .filter((c) => c.path_id === pid)
-      .map((c) => ({
-        ...c,
-        thumbnail_url: c.thumbnail ?? c.thumbnail_url ?? null,
-      }));
-    return {
-      id: path.id,
-      title: path.title,
-      description: path.description,
-      thumbnail_url: path.thumbnail ?? path.thumbnail_url ?? null,
-      courses: pathCourses,
-    };
-  }
-  if (!isSupabaseMode()) return null;
   try {
     const supabase = getSupabase();
     const { data, error } = await supabase

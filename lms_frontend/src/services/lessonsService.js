@@ -1,26 +1,11 @@
-import { getSupabase, isSupabaseMode } from '../lib/supabaseClient';
-import { DATA_SOURCE } from '../lib/dataMode';
-import { lessons as seedLessons } from '../data/seed';
+import { getSupabase } from '../lib/supabaseClient';
 
 /**
  * PUBLIC_INTERFACE
  * listLessonsByCourse
- * List lessons for a given course id ordered by position.
- * In local mode, returns synthesized lessons from seeds.
+ * List lessons for a given course id ordered by position (Supabase only).
  */
 export async function listLessonsByCourse(courseId) {
-  if (DATA_SOURCE === 'local') {
-    const cid = typeof courseId === 'string' ? parseInt(courseId, 10) : courseId;
-    return seedLessons
-      .filter((l) => l.course_id === cid)
-      .map((l, idx) => ({
-        ...l,
-        position: l.order ?? idx + 1,
-        thumbnail_url: l.thumbnail ?? l.thumbnail_url ?? null,
-      }))
-      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-  }
-  if (!isSupabaseMode()) return [];
   try {
     const supabase = getSupabase();
     const { data, error } = await supabase
@@ -40,20 +25,9 @@ export async function listLessonsByCourse(courseId) {
 /**
  * PUBLIC_INTERFACE
  * getLessonById
- * Fetch a single lesson by id.
- * In local mode, resolves from seeds.
+ * Fetch a single lesson by id (Supabase only).
  */
 export async function getLessonById(id) {
-  if (DATA_SOURCE === 'local') {
-    const lesson = seedLessons.find((l) => String(l.id) === String(id));
-    if (!lesson) return null;
-    return {
-      ...lesson,
-      position: lesson.order ?? 1,
-      thumbnail_url: lesson.thumbnail ?? lesson.thumbnail_url ?? null,
-    };
-  }
-  if (!isSupabaseMode()) return null;
   try {
     const supabase = getSupabase();
     const { data, error } = await supabase

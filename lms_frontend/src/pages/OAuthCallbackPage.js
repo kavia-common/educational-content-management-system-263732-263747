@@ -5,6 +5,7 @@ import { isSupabaseMode, getSupabase } from "../lib/supabaseClient";
 export default function OAuthCallbackPage() {
   /**
    * Handles Supabase PKCE redirect parsing.
+   * While login route is disabled, this page acts as a no-op redirect helper.
    * If Supabase mode is disabled, just redirect to intended route or /dashboard.
    */
   const [message, setMessage] = useState("Finalizing sign-in...");

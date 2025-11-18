@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Stat from '../components/ui/Stat';
 import Card from '../components/ui/Card';
-import { getSupabase, isSupabaseMode } from '../lib/supabaseClient';
+import { getSupabase } from '../lib/supabaseClient';
 
 /**
  * PUBLIC_INTERFACE
@@ -16,32 +16,27 @@ export default function AdminDashboardPage() {
   async function load() {
     setLoading(true);
     try {
-      if (isSupabaseMode()) {
-        const supabase = getSupabase();
-        const [{ count: paths }, { count: courses }, { count: lessons }, { count: learners }] = await Promise.all([
-          supabase.from('learning_paths').select('id', { count: 'exact', head: true }),
-          supabase.from('courses').select('id', { count: 'exact', head: true }),
-          supabase.from('lessons').select('id', { count: 'exact', head: true }),
-          supabase.from('profiles').select('id', { count: 'exact', head: true }),
-        ]);
+      const supabase = getSupabase();
+      const [{ count: paths }, { count: courses }, { count: lessons }, { count: learners }] = await Promise.all([
+        supabase.from('learning_paths').select('id', { count: 'exact', head: true }),
+        supabase.from('courses').select('id', { count: 'exact', head: true }),
+        supabase.from('lessons').select('id', { count: 'exact', head: true }),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+      ]);
 
-        const { data: recentProgress } = await supabase
-          .from('course_progress')
-          .select('id, user_id, lesson_id, is_completed, completed_at')
-          .order('completed_at', { ascending: false })
-          .limit(10);
+      const { data: recentProgress } = await supabase
+        .from('course_progress')
+        .select('id, user_id, lesson_id, is_completed, completed_at')
+        .order('completed_at', { ascending: false })
+        .limit(10);
 
-        setCounts({
-          learners: learners || 0,
-          paths: paths || 0,
-          courses: courses || 0,
-          lessons: lessons || 0,
-        });
-        setRecent(recentProgress || []);
-      } else {
-        setCounts({ learners: 0, paths: 0, courses: 0, lessons: 0 });
-        setRecent([]);
-      }
+      setCounts({
+        learners: learners || 0,
+        paths: paths || 0,
+        courses: courses || 0,
+        lessons: lessons || 0,
+      });
+      setRecent(recentProgress || []);
     } finally {
       setLoading(false);
     }

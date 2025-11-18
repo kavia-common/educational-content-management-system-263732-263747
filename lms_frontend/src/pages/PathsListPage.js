@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { listPaths } from '../services/pathsService';
 import PathCard from '../components/PathCard';
 import Button from '../components/ui/Button';
-import { DATA_SOURCE } from '../lib/dataMode';
 
 /**
  * PUBLIC_INTERFACE
@@ -34,11 +33,9 @@ export default function PathsListPage() {
   if (loading) return <div className="text-gray-500">Loading...</div>;
 
   if (!paths.length) {
-    const localMsg = 'No learning paths available in local seed.';
-    const supabaseMsg = 'No learning paths available yet.';
     return (
       <div className="text-gray-600">
-        {DATA_SOURCE === 'local' ? localMsg : supabaseMsg}
+        No learning paths available yet.
         <div className="mt-2"><Button onClick={load} variant="ghost">Retry</Button></div>
       </div>
     );

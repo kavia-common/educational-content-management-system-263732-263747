@@ -1,21 +1,11 @@
-import { getSupabase, isSupabaseMode } from "../lib/supabaseClient";
-import { DATA_SOURCE } from "../lib/dataMode";
-import { courses as seedCourses } from "../data/seed";
+import { getSupabase } from "../lib/supabaseClient";
 
 /**
  * PUBLIC_INTERFACE
  * listCourses
- * List all courses available.
- * In local mode, returns seed courses with thumbnail mapped to thumbnail_url.
+ * List all courses available (Supabase only).
  */
 export async function listCourses() {
-  if (DATA_SOURCE === "local") {
-    return seedCourses.map((c) => ({
-      ...c,
-      thumbnail_url: c.thumbnail ?? c.thumbnail_url ?? null,
-    }));
-  }
-  if (!isSupabaseMode()) return [];
   try {
     const supabase = getSupabase();
     const { data, error } = await supabase
@@ -34,20 +24,9 @@ export async function listCourses() {
 /**
  * PUBLIC_INTERFACE
  * listCoursesByPath
- * List all courses for a given learning path id.
- * In local mode, filters seed courses by path_id.
+ * List all courses for a given learning path id (Supabase only).
  */
 export async function listCoursesByPath(pathId) {
-  if (DATA_SOURCE === "local") {
-    const pid = typeof pathId === "string" ? parseInt(pathId, 10) : pathId;
-    return seedCourses
-      .filter((c) => c.path_id === pid)
-      .map((c) => ({
-        ...c,
-        thumbnail_url: c.thumbnail ?? c.thumbnail_url ?? null,
-      }));
-  }
-  if (!isSupabaseMode()) return [];
   try {
     const supabase = getSupabase();
     const { data, error } = await supabase
@@ -67,20 +46,9 @@ export async function listCoursesByPath(pathId) {
 /**
  * PUBLIC_INTERFACE
  * getCourseById
- * Fetch a single course (Supabase also fetches lessons in pages).
- * In local mode, returns course without lessons; pages will fetch lessons via lessonsService.
+ * Fetch a single course and its lessons (Supabase-only).
  */
 export async function getCourseById(id) {
-  if (DATA_SOURCE === "local") {
-    const cid = typeof id === "string" ? parseInt(id, 10) : id;
-    const course = seedCourses.find((c) => c.id === cid);
-    if (!course) return null;
-    return {
-      ...course,
-      thumbnail_url: course.thumbnail ?? course.thumbnail_url ?? null,
-    };
-  }
-  if (!isSupabaseMode()) return null;
   try {
     const supabase = getSupabase();
     const { data, error } = await supabase
@@ -136,8 +104,6 @@ export async function deleteCourse(id) {
  * Enroll current user in course.
  */
 export async function enroll(id) {
-  if (DATA_SOURCE === "local") return true; // no-op in local mode
-  if (!isSupabaseMode()) return false;
   const supabase = getSupabase();
   const { data: sessionData } = await supabase.auth.getUser();
   const uid = sessionData?.user?.id;
@@ -159,8 +125,6 @@ export async function enroll(id) {
  * Mark course started for current user.
  */
 export async function start(id) {
-  if (DATA_SOURCE === "local") return true; // no-op in local mode
-  if (!isSupabaseMode()) return false;
   const supabase = getSupabase();
   const { data: sessionData } = await supabase.auth.getUser();
   const uid = sessionData?.user?.id;
@@ -183,8 +147,6 @@ export async function start(id) {
  * Mark course completed for current user.
  */
 export async function complete(id) {
-  if (DATA_SOURCE === "local") return true; // no-op in local mode
-  if (!isSupabaseMode()) return false;
   const supabase = getSupabase();
   const { data: sessionData } = await supabase.auth.getUser();
   const uid = sessionData?.user?.id;
