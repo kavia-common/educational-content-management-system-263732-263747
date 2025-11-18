@@ -9,8 +9,29 @@ import CoursesPage from "./pages/CoursesPage";
 import CourseDetailPage from "./pages/CourseDetailPage";
 import AssignmentsPage from "./pages/AssignmentsPage";
 import GradesPage from "./pages/GradesPage";
+import EmployeeDashboardPage from "./pages/EmployeeDashboardPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
 import { applyCssVariables } from "./theme";
 import "./App.css";
+import { useAuth } from "./context/AuthContext";
+
+// Admin guard component
+function AdminRoute({ children }) {
+  /**
+   * Admin-only route guard; shows unauthorized message or redirects.
+   */
+  const { user, initializing } = useAuth();
+  if (initializing) return <div style={{ padding: 24 }}>Loading...</div>;
+  if (user?.role !== "admin") {
+    return (
+      <div style={{ padding: 24 }}>
+        <h2 className="page-title">Unauthorized</h2>
+        <p className="page-subtitle">You do not have access to this page.</p>
+      </div>
+    );
+  }
+  return children;
+}
 
 // PUBLIC_INTERFACE
 function App() {
@@ -43,6 +64,28 @@ function App() {
                 <AppLayout>
                   <DashboardPage />
                 </AppLayout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/employee/dashboard"
+            element={
+              <PrivateRoute>
+                <AppLayout>
+                  <EmployeeDashboardPage />
+                </AppLayout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <PrivateRoute>
+                <AdminRoute>
+                  <AppLayout>
+                    <AdminDashboardPage />
+                  </AppLayout>
+                </AdminRoute>
               </PrivateRoute>
             }
           />
