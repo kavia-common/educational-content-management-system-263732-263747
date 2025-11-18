@@ -1,3 +1,10 @@
+/* Tailwind base (utility classes) - processed via PostCSS using tailwind.config.js
+   Note: CRA with PostCSS will inline these directives in production build. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens */
 :root {
   --color-primary: #2563EB;
   --color-secondary: #F59E0B;
