@@ -5,6 +5,17 @@ import { apiFetch, apiJson } from "../apiClient";
  */
 export const coursesService = {
   // PUBLIC_INTERFACE
+  async list() {
+    /** List courses available to the current user. GET /api/courses (fallback /courses) */
+    try {
+      return await apiJson("/api/courses", { method: "GET" });
+    } catch (e) {
+      // fallback to legacy path if backend maps without /api
+      return apiJson("/courses", { method: "GET" });
+    }
+  },
+
+  // PUBLIC_INTERFACE
   async get(id) {
     /** Fetch course details including playback info from GET /api/courses/:id or /courses/:id */
     if (!id) {
@@ -20,6 +31,27 @@ export const coursesService = {
       // Fallback
       return apiJson(`/courses/${encodeURIComponent(id)}`, { method: "GET" });
     }
+  },
+
+  // PUBLIC_INTERFACE
+  async enroll(id) {
+    /** Enroll current user into course. POST /api/courses/:id/enroll */
+    if (!id) {
+      const err = new Error("Course id required");
+      err.status = 400;
+      throw err;
+    }
+    const res = await apiFetch(`/api/courses/${encodeURIComponent(id)}/enroll`, { method: "POST" });
+    if (!res.ok) {
+      const data = (res.headers.get("content-type") || "").includes("application/json")
+        ? await res.json()
+        : await res.text();
+      const err = new Error("Failed to enroll");
+      err.status = res.status;
+      err.data = data;
+      throw err;
+    }
+    return res.status === 204 ? null : res.json().catch(() => null);
   },
 
   // PUBLIC_INTERFACE

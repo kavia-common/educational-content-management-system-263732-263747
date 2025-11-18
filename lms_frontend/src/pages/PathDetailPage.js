@@ -57,7 +57,7 @@ export default function PathDetailPage() {
 
       <div className="grid cols-3" style={{ marginTop: 8 }}>
         {courses.map((course) => (
-          <CourseCard key={course.id} course={course} ctaLabel="Start" />
+          <CourseCard key={course.id} course={course} ctaLabel={course?.enrolled ? "Open Course" : "Start"} />
         ))}
         {courses.length === 0 && !loading && !err && <div className="card">No courses in this path.</div>}
       </div>
