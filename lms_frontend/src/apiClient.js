@@ -5,6 +5,7 @@ const BASE_URL =
 
 // Frontend must never initialize a Supabase client or expose anon/service keys.
 // All authentication/data calls go through the backend proxy using cookies.
+// In guest mode, we do not redirect on 401 and instead return empty data.
 const FRONTEND_URL = process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000";
 
 function log(level, message, meta) {
@@ -25,8 +26,8 @@ export function getBaseUrl() {
 // PUBLIC_INTERFACE
 export async function apiFetch(path, options = {}) {
   /**
-   * Fetch wrapper that includes credentials for cookie-based auth and
-   * handles 401 responses by redirecting to /login.
+   * Fetch wrapper that includes credentials for cookie-based auth.
+   * In guest mode we do NOT redirect on 401; callers can handle gracefully.
    *
    * @param {string} path - endpoint path starting with /
    * @param {RequestInit} options - fetch options
@@ -42,37 +43,19 @@ export async function apiFetch(path, options = {}) {
     },
   };
 
-  let response;
   try {
-    response = await fetch(url, opts);
+    const response = await fetch(url, opts);
+    return response;
   } catch (e) {
     log("error", "Network error", { path, error: String(e) });
     throw e;
   }
-
-  if (response.status === 401) {
-    log("warn", "Unauthorized - redirecting to login", { path });
-    // Redirect to login page, preserving intended destination
-    const destination = encodeURIComponent(window.location.pathname + window.location.search);
-    // Use replace to avoid back navigation loop
-    window.location.replace(`/login?next=${destination}`);
-    return response;
-  }
-
-  return response;
 }
 
 // PUBLIC_INTERFACE
 export async function apiJson(path, options = {}) {
   /** Convenience wrapper to parse JSON and throw on non-2xx responses. */
   const res = await apiFetch(path, options);
-  // If a 401 happened apiFetch already redirected; avoid parsing an empty body
-  if (res.status === 401) {
-    const err = new Error("Unauthorized");
-    err.status = 401;
-    err.data = null;
-    throw err;
-  }
   const contentType = res.headers.get("content-type") || "";
   let data = null;
   if (contentType.includes("application/json")) {
@@ -92,22 +75,25 @@ export async function apiJson(path, options = {}) {
 export const authApi = {
   // PUBLIC_INTERFACE
   async me() {
-    /** Get current user from cookie-based backend session. */
-    return apiJson("/auth/me", { method: "GET" });
+    /**
+     * Get current user from backend. In guest mode the backend may return 401.
+     * We treat that as anonymous and return null.
+     */
+    try {
+      return await apiJson("/auth/me", { method: "GET" });
+    } catch (e) {
+      if (e && e.status === 401) return null;
+      throw e;
+    }
   },
   // PUBLIC_INTERFACE
-  loginUrl(provider = "email") {
-    /**
-     * Build backend login endpoint URL that triggers OAuth/email provider flow.
-     * The backend should handle redirect back to REACT_APP_FRONTEND_URL/oauth/callback
-     */
-    const callback = `${FRONTEND_URL}/oauth/callback`;
-    const qs = new URLSearchParams({ provider, redirect_to: callback });
-    return `${BASE_URL}/auth/login?${qs.toString()}`;
+  loginUrl() {
+    /** Guest mode: no login URL used. */
+    return `${FRONTEND_URL}/`;
   },
   // PUBLIC_INTERFACE
   async logout() {
-    /** Log out by clearing backend cookie session. */
-    return apiFetch("/auth/logout", { method: "POST" });
+    /** Guest mode: no-op logout. */
+    return Promise.resolve();
   },
 };

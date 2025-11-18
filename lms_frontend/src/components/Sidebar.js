@@ -1,32 +1,24 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import "./layout.css";
-import { useAuth } from "../context/AuthContext";
 
 // PUBLIC_INTERFACE
 export default function Sidebar() {
-  /** Sidebar navigation for main sections (role-aware authoring links). */
-  const { user } = useAuth();
-  const isAuthed = !!user;
-  const isAdmin = user?.role === "admin";
-  const canAuthor = isAdmin || user?.role === "instructor";
-
+  /** Sidebar navigation for main sections; always visible in guest mode. */
   const linkClass = ({ isActive }) => (isActive ? "side-link active" : "side-link");
 
   return (
     <aside className="sidebar" aria-label="Primary navigation">
-      <nav aria-live="polite" aria-busy={!isAuthed ? "true" : "false"}>
+      <nav>
         <NavLink to="/dashboard" className={linkClass} aria-label="Dashboard">
           Dashboard
         </NavLink>
         <NavLink to="/employee/dashboard" className={linkClass} aria-label="Employee Dashboard">
           Employee Dashboard
         </NavLink>
-        {isAdmin && (
-          <NavLink to="/admin/dashboard" className={linkClass} aria-label="Admin Dashboard">
-            Admin Dashboard
-          </NavLink>
-        )}
+        <NavLink to="/admin/dashboard" className={linkClass} aria-label="Admin Dashboard">
+          Admin Dashboard
+        </NavLink>
         <NavLink to="/paths" className={linkClass} aria-label="Learning Paths">
           Learning Paths
         </NavLink>
@@ -40,22 +32,18 @@ export default function Sidebar() {
           Grades
         </NavLink>
 
-        {isAuthed && canAuthor && (
-          <>
-            <div className="page-subtitle" style={{ margin: "12px 8px 4px", color: "#8FA0B8" }}>
-              Authoring
-            </div>
-            <NavLink to="/authoring/paths" className={linkClass} aria-label="Manage Paths">
-              Manage Paths
-            </NavLink>
-            <NavLink to="/authoring/courses" className={linkClass} aria-label="Manage Courses">
-              Manage Courses
-            </NavLink>
-            <NavLink to={process.env.REACT_APP_HEALTHCHECK_PATH || "/health"} className={linkClass} aria-label="System Health">
-              System Health
-            </NavLink>
-          </>
-        )}
+        <div className="page-subtitle" style={{ margin: "12px 8px 4px", color: "#8FA0B8" }}>
+          Authoring
+        </div>
+        <NavLink to="/authoring/paths" className={linkClass} aria-label="Manage Paths">
+          Manage Paths
+        </NavLink>
+        <NavLink to="/authoring/courses" className={linkClass} aria-label="Manage Courses">
+          Manage Courses
+        </NavLink>
+        <NavLink to={process.env.REACT_APP_HEALTHCHECK_PATH || "/health"} className={linkClass} aria-label="System Health">
+          System Health
+        </NavLink>
       </nav>
     </aside>
   );

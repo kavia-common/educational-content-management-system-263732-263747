@@ -15,7 +15,7 @@ export default function AssignmentsPage() {
         const data = await apiJson("/assignments");
         if (mounted) setItems(Array.isArray(data) ? data : (data?.items || []));
       } catch (e) {
-        setErr(e);
+        if (e?.status !== 401) setErr(e);
       }
     })();
     return () => { mounted = false; };

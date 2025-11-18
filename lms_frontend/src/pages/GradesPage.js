@@ -15,7 +15,7 @@ export default function GradesPage() {
         const data = await apiJson("/grades");
         if (mounted) setGrades(Array.isArray(data) ? data : (data?.items || []));
       } catch (e) {
-        setErr(e);
+        if (e?.status !== 401) setErr(e);
       }
     })();
     return () => { mounted = false; };

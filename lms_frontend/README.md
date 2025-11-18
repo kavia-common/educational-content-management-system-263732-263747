@@ -18,11 +18,31 @@ Security notes:
 - In Supabase mode, the anon key is considered public. Ensure tight RLS policies.
 - In proxy mode, the browser never sees Supabase keys or tokens.
 
+## Current Demo Configuration: Authentication Disabled
+
+For this deployment, sign-in is disabled and the app runs in guest/anonymous mode:
+- All pages are publicly reachable without logging in.
+- Route guards are permissive; authoring and admin dashboards are accessible.
+- The TopNav hides login/logout controls and shows a Guest badge.
+- The Login page is removed from routing and any legacy /login hits redirect to /dashboard.
+
+Important implications:
+- Any action that depends on authenticated backend/session (or Supabase RLS) may fail with 401/403 if your backend requires auth. In guest mode we do not redirect; UI should continue to function with whatever public data is available.
+- Authoring endpoints typically require elevated permissions. You may need to:
+  - Allow public access in your backend/proxy for demo purposes, or
+  - Re-enable authentication before performing write operations.
+
+How to re-enable authentication later:
+- Restore PrivateRoute and role checks in src/context/AuthContext.js and src/App.js.
+- Re-add /login and /oauth/callback routes in src/App.js.
+- Switch AuthContext to call backend /auth/me or use Supabase mode (see sections below).
+- Show login/logout controls in TopNav and role-aware links in Sidebar.
+
 ## Key Characteristics
 - Routing with react-router-dom (v6)
-- Auth and data services switch based on feature flag
 - Ocean Professional theme (blue primary, amber secondary)
-- Core pages: /login, /oauth/callback, /dashboard, /paths, /paths/:id, /courses, /courses/:id, /assignments, /grades
+- Core pages: /dashboard, /paths, /paths/:id, /courses, /courses/:id, /assignments, /grades
+  - Note: /login is intentionally not used while auth is disabled.
 
 ## Environment Variables
 Create a `.env` using `.env.example` as reference:
@@ -48,16 +68,15 @@ Additional container variables may exist:
 - `npm run build` - production build
 
 ## Architecture
-- src/lib/supabaseClient.js: client SDK and feature flag check
-- src/apiClient.js: backend proxy fetch wrapper
-- src/context/AuthContext.js: auth state; uses supabase.auth in Supabase mode or /auth/me in proxy mode
+- src/lib/supabaseClient.js: client SDK and feature flag check (not used while auth is disabled)
+- src/apiClient.js: backend proxy fetch wrapper (no 401 redirect in guest mode)
+- src/context/AuthContext.js: guest/anonymous mode default user with role "admin" for full demo access
 - src/services/*: paths/courses/progress switch between Supabase and proxy endpoints
-- src/pages/LoginPage.js: supports email/password, magic link in Supabase mode; redirects to backend in proxy mode
 - src/layouts and components: UI
 - src/theme.js: theme variables applied to :root
 
 ## Supabase Browser Mode
-Enable with REACT_APP_FEATURE_FLAGS containing FLAG_SUPABASE_MODE=true.
+Enable with REACT_APP_FEATURE_FLAGS containing FLAG_SUPABASE_MODE=true (if you re-enable auth).
 
 Auth flow:
 - On load, AuthContext calls supabase.auth.getSession() and subscribes to onAuthStateChange
@@ -77,13 +96,13 @@ Security considerations:
 - Validate RLS policies to ensure users can only see their own enrollments/progress and public course/path data
 
 ## Backend Proxy Mode (Summary)
-Same as described previously (see kavia-docs/backend-proxy-contract.md). The app will use:
+Same as described previously (see kavia-docs/backend-proxy-contract.md). When auth is re-enabled the app will use:
 - GET /auth/me, /auth/login, /auth/logout
 - /api/... endpoints for data
 
 ## Notes
-- Feature-flag switch ensures both integration patterns are supported without code removal.
-- ProtectedRoute/role checks rely on AuthContext user.role which comes from profiles.role in Supabase mode.
+- While auth is disabled, RLS-dependent actions may fail unless public access is allowed server-side.
+- For production, re-enable authentication and restore route guards.
 
 Player routing:
 - The player lives at `/courses/:id` (CoursePlayerPage). Links from course lists and learning path courses point here for a consistent start/complete experience.

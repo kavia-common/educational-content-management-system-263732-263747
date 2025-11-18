@@ -1,7 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { authApi } from "../apiClient";
-import { getSupabase, isSupabaseMode } from "../lib/supabaseClient";
 
+/**
+ * AuthContext in guest/anonymous mode.
+ * - isAuthenticated is always true
+ * - user defaults to a guest profile with admin role for full access, configurable below
+ * - No calls to supabase.auth or backend auth endpoints are made
+ */
 const AuthContext = createContext(undefined);
 
 // PUBLIC_INTERFACE
@@ -15,134 +19,44 @@ export function useAuth() {
 // PUBLIC_INTERFACE
 export function AuthProvider({ children }) {
   /**
-   * Provides authentication state for either:
-   * - Backend proxy cookie session (default)
-   * - Direct Supabase client session (when FLAG_SUPABASE_MODE is true)
-   *
-   * In Supabase mode it:
-   *  - calls supabase.auth.getSession() on load
-   *  - subscribes to supabase.auth.onAuthStateChange
-   *  - fetches profile from 'profiles' table to determine role
+   * Provides a default guest user so the app works without sign-in.
+   * Change role to "guest" to restrict author/admin UI if desired.
    */
-  const [user, setUser] = useState(null);
-  const [initializing, setInitializing] = useState(true);
-  const supaMode = isSupabaseMode();
+  const defaultGuest = useMemo(
+    () => ({
+      id: "guest",
+      email: "guest@example.com",
+      name: "Guest",
+      // Use "admin" for full-access demo or "guest" to restrict UI affordances
+      role: "admin",
+      profile: { full_name: "Guest User", role: "admin" },
+    }),
+    []
+  );
 
-  const mapSupabaseUser = (u, profile) => {
-    if (!u) return null;
-    return {
-      id: u.id,
-      email: u.email,
-      name: profile?.full_name || profile?.name || u.user_metadata?.name || u.email,
-      role: profile?.role || "student",
-      profile,
-    };
-  };
+  const [user, setUser] = useState(defaultGuest);
+  const [initializing, setInitializing] = useState(false);
 
-  const loadFromSupabase = useCallback(async () => {
-    const supabase = getSupabase();
-    const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
-    if (sessionErr) {
-      setUser(null);
-      setInitializing(false);
-      return;
-    }
-    const session = sessionData?.session || null;
-    const authedUser = session?.user || null;
-    if (!authedUser) {
-      setUser(null);
-      setInitializing(false);
-      return;
-    }
-    // fetch profile
-    let profile = null;
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", authedUser.id)
-        .single();
-      if (!error) profile = data;
-    } catch (_) {
-      // ignore, default student
-    }
-    setUser(mapSupabaseUser(authedUser, profile));
+  useEffect(() => {
+    // Immediately ready in guest mode
     setInitializing(false);
   }, []);
 
   const refresh = useCallback(async () => {
-    /**
-     * PUBLIC_INTERFACE
-     * Refresh the authenticated user depending on mode.
-     */
-    if (supaMode) {
-      await loadFromSupabase();
-      return;
-    }
-    try {
-      const me = await authApi.me();
-      setUser(me?.user || me || null);
-    } catch (_) {
-      setUser(null);
-    } finally {
-      setInitializing(false);
-    }
-  }, [supaMode, loadFromSupabase]);
+    /** PUBLIC_INTERFACE: No-op refresh in guest mode. */
+    setUser(defaultGuest);
+    setInitializing(false);
+  }, [defaultGuest]);
 
-  useEffect(() => {
-    let unsubscribe = null;
-    (async () => {
-      if (supaMode) {
-        await loadFromSupabase();
-        const supabase = getSupabase();
-        const { data: sub } = supabase.auth.onAuthStateChange(async (_event, _session) => {
-          // Always re-load profile on auth state change
-          await loadFromSupabase();
-        });
-        unsubscribe = sub?.subscription?.unsubscribe;
-      } else {
-        await refresh();
-      }
-    })();
-    return () => {
-      if (typeof unsubscribe === "function") unsubscribe();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supaMode]);
-
-  const login = useCallback(
-    (provider = "email") => {
-      // In proxy mode, redirect to backend login
-      if (!supaMode) {
-        const url = authApi.loginUrl(provider);
-        window.location.assign(url);
-        return;
-      }
-      // In Supabase mode, the page's form will call signIn methods; keep for compatibility.
-      // No-op here to avoid accidental redirects.
-    },
-    [supaMode]
-  );
+  const login = useCallback(() => {
+    /** PUBLIC_INTERFACE: No-op login in guest mode. */
+    // Intentionally empty
+  }, []);
 
   const logout = useCallback(async () => {
-    /**
-     * PUBLIC_INTERFACE
-     * Logs out depending on mode and redirects to /login.
-     */
-    try {
-      if (supaMode) {
-        const supabase = getSupabase();
-        await supabase.auth.signOut();
-      } else {
-        await authApi.logout();
-      }
-    } catch (_) {
-      // ignore
-    } finally {
-      setUser(null);
-      window.location.replace("/login");
-    }
-  }, [supaMode]);
+    /** PUBLIC_INTERFACE: No-op logout in guest mode; keep user as guest. */
+    setUser(defaultGuest);
+  }, [defaultGuest]);
 
   const value = useMemo(
     () => ({
@@ -151,29 +65,10 @@ export function AuthProvider({ children }) {
       refresh,
       login,
       logout,
-      isAuthenticated: !!user,
+      isAuthenticated: true,
     }),
     [user, initializing, refresh, login, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-// PUBLIC_INTERFACE
-export function PrivateRoute({ children }) {
-  /**
-   * Guards protected routes: shows a loading state until initialized,
-   * redirects to /login if unauthenticated, otherwise renders children.
-   */
-  const { initializing, isAuthenticated } = useAuth();
-
-  if (initializing) {
-    return <div style={{ padding: 24 }}>Loading...</div>;
-  }
-  if (!isAuthenticated) {
-    const next = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.replace(`/login?next=${next}`);
-    return null;
-  }
-  return children;
 }

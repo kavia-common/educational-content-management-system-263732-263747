@@ -15,7 +15,8 @@ export default function DashboardPage() {
         const data = await apiJson("/dashboard/summary");
         if (mounted) setSummary(data);
       } catch (e) {
-        setErr(e);
+        // In guest mode backend may return 401; show placeholders without error card
+        if (e?.status !== 401) setErr(e);
       }
     })();
     return () => { mounted = false; };
