@@ -49,6 +49,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let mounted = true;
+
     (async () => {
       try {
         const {
@@ -60,7 +61,11 @@ export function AuthProvider({ children }) {
           const composed = {
             id: session.user.id,
             email: session.user.email,
-            name: profile?.full_name || session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "User",
+            name:
+              profile?.full_name ||
+              session.user.user_metadata?.full_name ||
+              session.user.email?.split("@")[0] ||
+              "User",
             role: profile?.role || session.user.app_metadata?.role || "student",
             profile: profile || undefined,
             session,
@@ -76,8 +81,8 @@ export function AuthProvider({ children }) {
       }
     })();
 
-    const { data: subscription } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      // Handle login/logout/refresh token, fetch profile on login
+    // Subscribe and ensure cleanup
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
         setUser(null);
         return;
@@ -86,7 +91,11 @@ export function AuthProvider({ children }) {
       setUser({
         id: session.user.id,
         email: session.user.email,
-        name: profile?.full_name || session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "User",
+        name:
+          profile?.full_name ||
+          session.user.user_metadata?.full_name ||
+          session.user.email?.split("@")[0] ||
+          "User",
         role: profile?.role || session.user.app_metadata?.role || "student",
         profile: profile || undefined,
         session,
@@ -94,7 +103,11 @@ export function AuthProvider({ children }) {
     });
 
     return () => {
-      subscription.subscription?.unsubscribe?.();
+      try {
+        sub.subscription?.unsubscribe?.();
+      } catch {
+        // ignore
+      }
       mounted = false;
     };
   }, []);
@@ -133,9 +146,7 @@ export function AuthProvider({ children }) {
 
   const signUpWithPassword = useCallback(async (email, password) => {
     /** PUBLIC_INTERFACE: Email/password sign up with emailRedirectTo. */
-    const siteUrl =
-      process.env.REACT_APP_FRONTEND_URL ||
-      window.location.origin;
+    const siteUrl = process.env.REACT_APP_FRONTEND_URL || window.location.origin;
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -149,9 +160,7 @@ export function AuthProvider({ children }) {
 
   const sendMagicLink = useCallback(async (email) => {
     /** PUBLIC_INTERFACE: Email magic link login (signInWithOtp). */
-    const siteUrl =
-      process.env.REACT_APP_FRONTEND_URL ||
-      window.location.origin;
+    const siteUrl = process.env.REACT_APP_FRONTEND_URL || window.location.origin;
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -164,9 +173,7 @@ export function AuthProvider({ children }) {
 
   const signInWithOAuth = useCallback(async (provider) => {
     /** PUBLIC_INTERFACE: Begin OAuth flow; no secrets are hardcoded. */
-    const siteUrl =
-      process.env.REACT_APP_FRONTEND_URL ||
-      window.location.origin;
+    const siteUrl = process.env.REACT_APP_FRONTEND_URL || window.location.origin;
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
@@ -184,6 +191,23 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  // PUBLIC_INTERFACE
+  const getEnvInfo = useCallback(() => {
+    /**
+     * Returns safe environment info for diagnostics (no secrets).
+     * Only indicates whether key exists, and shows url.
+     */
+    const url = process.env.REACT_APP_SUPABASE_URL || "";
+    const key = process.env.REACT_APP_SUPABASE_KEY || process.env.REACT_APP_SUPABASE_ANON_KEY || "";
+    const maskedKey = key ? `${key.slice(0, 4)}…${key.slice(-4)}` : "";
+    return {
+      supabaseUrl: url,
+      supabaseKeyPresent: Boolean(key),
+      supabaseKeyMasked: maskedKey,
+      frontendUrl: process.env.REACT_APP_FRONTEND_URL || window.location.origin,
+    };
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -196,6 +220,7 @@ export function AuthProvider({ children }) {
       sendMagicLink,
       logout,
       isAuthenticated: !!user,
+      getEnvInfo,
     }),
     [
       user,
@@ -206,6 +231,7 @@ export function AuthProvider({ children }) {
       signInWithOAuth,
       sendMagicLink,
       logout,
+      getEnvInfo,
     ]
   );
 

@@ -44,12 +44,19 @@ Public routes:
    npm install
 
 2) Create .env in lms_frontend root with:
-   REACT_APP_SUPABASE_URL=<your_supabase_project_url>
-   REACT_APP_SUPABASE_KEY=<anon_key_for_prototype>
-   REACT_APP_FRONTEND_URL=<http://localhost:3000>
+   REACT_APP_SUPABASE_URL=<your_supabase_project_url>        # e.g. https://xxxxx.supabase.co
+   REACT_APP_SUPABASE_KEY=<anon_key_for_prototype>           # or use REACT_APP_SUPABASE_ANON_KEY
+   REACT_APP_FRONTEND_URL=<http://localhost:3000>            # used for redirectTo/emailRedirectTo
+   REACT_APP_HEALTHCHECK_PATH=/health
 
-   Warning: Using a service role key in the frontend is unsafe. This setup is for prototype/demo only.
-   For production, use the anon key with strict RLS or route through a secure backend proxy.
+   Notes:
+   - Do NOT use a service role key in the frontend.
+   - In Supabase Auth settings, add Redirect URLs:
+     http://localhost:3000/oauth/callback
+     http://localhost:3000/signin
+     and your deployed URLs equivalents.
+   - If email confirmations are enabled, verification links must include /signin as a valid redirect.
+   - Ensure Email auth is enabled in your Supabase project Authentication settings.
 
 3) Start:
    npm start

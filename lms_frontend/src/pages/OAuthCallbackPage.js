@@ -5,19 +5,27 @@ import { useAuth } from "../context/AuthContext";
 export default function OAuthCallbackPage() {
   /**
    * Resolve session after OAuth redirect and navigate to intended page.
+   * If provider returned an error_description, surface it briefly then redirect to /signin.
    */
   const { refresh } = useAuth();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const next = params.get("next") || "/dashboard";
+    const errDesc = params.get("error_description");
     (async () => {
       try {
+        if (errDesc) {
+          // eslint-disable-next-line no-console
+          console.error("[OAuthCallback] Provider error:", errDesc);
+          window.alert("OAuth error: " + errDesc);
+          window.location.replace("/signin");
+          return;
+        }
         await refresh();
-      } catch (_) {
-        // ignore
-      } finally {
         window.location.replace(next);
+      } catch (_) {
+        window.location.replace("/signin");
       }
     })();
   }, [refresh]);

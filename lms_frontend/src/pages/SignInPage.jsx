@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import "../components/layout.css";
 import { useAuth } from "../context/AuthContext";
 
@@ -7,15 +7,18 @@ import { useAuth } from "../context/AuthContext";
  * SignInPage: Email/password sign-in with optional magic link and OAuth buttons.
  */
 export default function SignInPage() {
-  const { signInWithPassword, sendMagicLink, signInWithOAuth } = useAuth();
+  const { signInWithPassword, sendMagicLink, signInWithOAuth, refresh, getEnvInfo } = useAuth();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
   const [working, setWorking] = useState(false);
+  const [showDiag, setShowDiag] = useState(false);
 
   const params = new URLSearchParams(window.location.search);
   const next = params.get("next") || "/dashboard";
+
+  const env = useMemo(() => getEnvInfo?.() || {}, [getEnvInfo]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,6 +27,8 @@ export default function SignInPage() {
     setWorking(true);
     try {
       await signInWithPassword(email, pw);
+      // Ensure context has session before routing to guarded pages
+      await refresh();
       window.location.replace(next);
     } catch (e2) {
       setErr(e2?.message || "Sign-in failed");
@@ -118,6 +123,23 @@ export default function SignInPage() {
         <div className="page-subtitle" style={{ marginTop: 8 }}>
           Note: OAuth provider configuration is managed in Supabase dashboard; no secrets exist in the frontend.
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 12 }}>
+        <div className="hstack" style={{ justifyContent: "space-between", alignItems: "center" }}>
+          <div className="page-subtitle">Diagnostics</div>
+          <button className="btn btn-secondary" type="button" onClick={() => setShowDiag((s) => !s)}>
+            {showDiag ? "Hide" : "Show"}
+          </button>
+        </div>
+        {showDiag && (
+          <div style={{ fontFamily: "monospace", fontSize: 12, marginTop: 8, wordBreak: "break-all" }}>
+            <div>Supabase URL: {env.supabaseUrl || "(not set)"}</div>
+            <div>Supabase Key Present: {String(env.supabaseKeyPresent)}</div>
+            <div>Supabase Key (masked): {env.supabaseKeyMasked || "(none)"}</div>
+            <div>Frontend URL: {env.frontendUrl}</div>
+          </div>
+        )}
       </div>
     </div>
   );

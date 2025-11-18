@@ -11,18 +11,27 @@ import { createClient } from "@supabase/supabase-js";
 
 // PUBLIC_INTERFACE
 export const supabase = (() => {
-  const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-  const supabaseKey = process.env.REACT_APP_SUPABASE_KEY || process.env.REACT_APP_SUPABASE_ANON_KEY;
+  const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || "";
+  const supabaseKey = process.env.REACT_APP_SUPABASE_KEY || process.env.REACT_APP_SUPABASE_ANON_KEY || "";
+
+  const maskedKey = supabaseKey ? `${supabaseKey.slice(0, 4)}…${supabaseKey.slice(-4)}` : "";
 
   if (!supabaseUrl || !supabaseKey) {
     // eslint-disable-next-line no-console
     console.warn(
-      "[supabaseClient] Missing env vars. Set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_KEY (or REACT_APP_SUPABASE_ANON_KEY) in your .env"
+      "[supabaseClient] Missing env vars. Set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_KEY (or REACT_APP_SUPABASE_ANON_KEY) in your .env",
+      { urlPresent: Boolean(supabaseUrl), keyPresent: Boolean(supabaseKey) }
     );
+  } else {
+    // eslint-disable-next-line no-console
+    console.log("[supabaseClient] Initializing Supabase client", {
+      url: supabaseUrl,
+      keyMasked: maskedKey,
+    });
   }
 
   try {
-    return createClient(supabaseUrl || "", supabaseKey || "", {
+    return createClient(supabaseUrl, supabaseKey, {
       auth: {
         persistSession: true,
         detectSessionInUrl: true,
