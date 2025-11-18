@@ -18,7 +18,10 @@ export const supabase = (() => {
     process.env.REACT_APP_SUPABASE_KEY ||
     "";
 
+  // siteUrl used by helpers in AuthContext for redirectTo/emailRedirectTo
+  // Keep here if needed in future to pass via global options.
   const siteUrl = process.env.REACT_APP_FRONTEND_URL || window.location.origin;
+  void siteUrl;
 
   const maskedKey = supabaseKey ? `${supabaseKey.slice(0, 4)}…${supabaseKey.slice(-4)}` : "";
 

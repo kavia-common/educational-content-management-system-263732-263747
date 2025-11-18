@@ -9,6 +9,7 @@ import { getSupabaseEnvInfo } from "../lib/supabaseClient";
  * - Initializes from supabase.auth.getSession()
  * - Subscribes to onAuthStateChange for live session updates
  * - Fetches public profile from 'profiles' table (id=auth.uid()) if available
+ * - Creates a basic profile on first login if missing
  * - Provides login/signUp/email magic-link and OAuth-start helpers (client-side)
  *
  * UI/Routes:
@@ -25,16 +26,42 @@ export function useAuth() {
   return ctx;
 }
 
-async function fetchProfile(userId) {
+async function ensureProfile(user) {
+  // Fetch existing profile; if not exists, create a minimal profile row
   try {
     const { data, error } = await supabase
       .from("profiles")
       .select("id, full_name, role")
-      .eq("id", userId)
+      .eq("id", user.id)
       .maybeSingle();
-    if (error) return null;
-    return data || null;
-  } catch {
+    if (error) {
+      // swallow read errors to avoid blocking login
+      return null;
+    }
+    if (data) return data;
+
+    // Create default profile
+    const defaultName =
+      user.user_metadata?.full_name ||
+      user.email?.split("@")[0] ||
+      "User";
+    const role = user.app_metadata?.role || "student";
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from("profiles")
+      .insert([{ id: user.id, full_name: defaultName, role }])
+      .select("id, full_name, role")
+      .maybeSingle();
+
+    if (insertErr) {
+      // eslint-disable-next-line no-console
+      console.warn("[AuthContext] Failed to create profile", insertErr.message);
+      return null;
+    }
+    return inserted || null;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("[AuthContext] ensureProfile error", e?.message);
     return null;
   }
 }
@@ -43,10 +70,29 @@ async function fetchProfile(userId) {
 export function AuthProvider({ children }) {
   /**
    * Provides Supabase-authenticated user context.
-   * user shape: { id, email, name, role, profile }
+   * user shape: { id, email, name, role, profile, session }
    */
   const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
+
+  // Compose user object with profile
+  const composeUser = useCallback(async (session) => {
+    if (!session?.user) return null;
+    // fetch or create profile on first login
+    const profile = (await ensureProfile(session.user)) || undefined;
+    return {
+      id: session.user.id,
+      email: session.user.email,
+      name:
+        profile?.full_name ||
+        session.user.user_metadata?.full_name ||
+        session.user.email?.split("@")[0] ||
+        "User",
+      role: profile?.role || session.user.app_metadata?.role || "student",
+      profile,
+      session,
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -58,20 +104,8 @@ export function AuthProvider({ children }) {
         } = await supabase.auth.getSession();
         if (!mounted) return;
         if (session?.user) {
-          const profile = await fetchProfile(session.user.id);
-          const composed = {
-            id: session.user.id,
-            email: session.user.email,
-            name:
-              profile?.full_name ||
-              session.user.user_metadata?.full_name ||
-              session.user.email?.split("@")[0] ||
-              "User",
-            role: profile?.role || session.user.app_metadata?.role || "student",
-            profile: profile || undefined,
-            session,
-          };
-          setUser(composed);
+          const composed = await composeUser(session);
+          if (mounted) setUser(composed);
         } else {
           setUser(null);
         }
@@ -88,19 +122,8 @@ export function AuthProvider({ children }) {
         setUser(null);
         return;
       }
-      const profile = await fetchProfile(session.user.id);
-      setUser({
-        id: session.user.id,
-        email: session.user.email,
-        name:
-          profile?.full_name ||
-          session.user.user_metadata?.full_name ||
-          session.user.email?.split("@")[0] ||
-          "User",
-        role: profile?.role || session.user.app_metadata?.role || "student",
-        profile: profile || undefined,
-        session,
-      });
+      const composed = await composeUser(session);
+      setUser(composed);
     });
 
     return () => {
@@ -111,7 +134,7 @@ export function AuthProvider({ children }) {
       }
       mounted = false;
     };
-  }, []);
+  }, [composeUser]);
 
   const refresh = useCallback(async () => {
     /** PUBLIC_INTERFACE: Refresh user and profile from current session. */
@@ -121,22 +144,10 @@ export function AuthProvider({ children }) {
       setUser(null);
       return null;
     }
-    const profile = await fetchProfile(session.user.id);
-    const composed = {
-      id: session.user.id,
-      email: session.user.email,
-      name:
-        profile?.full_name ||
-        session.user.user_metadata?.full_name ||
-        session.user.email?.split("@")[0] ||
-        "User",
-      role: profile?.role || session.user.app_metadata?.role || "student",
-      profile: profile || undefined,
-      session,
-    };
+    const composed = await composeUser(session);
     setUser(composed);
     return composed;
-  }, []);
+  }, [composeUser]);
 
   const signInWithPassword = useCallback(async (email, password) => {
     /** PUBLIC_INTERFACE: Email/password sign in. */

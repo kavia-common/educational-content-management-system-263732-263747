@@ -55,6 +55,14 @@ export default function SignInPage() {
     setErr("");
     setMsg("");
     try {
+      // Append ?next= to callback by storing it in localStorage for callback page to read (since providers may drop query)
+      if (next) {
+        try {
+          localStorage.setItem("oauth_next", next);
+        } catch {
+          // ignore
+        }
+      }
       await signInWithOAuth(provider);
     } catch (e2) {
       setErr(e2?.message || "OAuth error");

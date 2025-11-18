@@ -12,6 +12,9 @@ export default function TopNav() {
     window.location.replace("/signin");
   };
 
+  const displayName = user?.name || (user?.email ? user.email.split("@")[0] : "Guest");
+  const avatarLetter = (displayName || "G").slice(0, 1).toUpperCase();
+
   return (
     <header className="topnav" role="banner">
       <div className="brand" aria-label="OceanLMS Home">
@@ -21,9 +24,9 @@ export default function TopNav() {
         </a>
       </div>
       <div className="actions" role="navigation" aria-label="User">
-        <div className="user-badge" title={user?.email || user?.name || "Guest"} aria-label={`User: ${user?.name || "Guest"}`}>
-          <span className="avatar" aria-hidden="true">{(user?.name || "G").slice(0, 1).toUpperCase()}</span>
-          <span className="user-name">{user?.name || "Guest"}</span>
+        <div className="user-badge" title={user?.email || displayName} aria-label={`User: ${displayName}`}>
+          <span className="avatar" aria-hidden="true">{avatarLetter}</span>
+          <span className="user-name">{displayName}</span>
         </div>
         {isAuthenticated ? (
           <>
