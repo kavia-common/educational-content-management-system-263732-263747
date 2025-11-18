@@ -23,13 +23,21 @@ export function useSession() {
         if (isMounted) {
           setSession(data.session ?? null);
           setLoading(false);
+          // eslint-disable-next-line no-console
+          console.debug("[useSession] initial session", { hasSession: !!data.session });
         }
-        const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-          if (isMounted) setSession(newSession ?? null);
+        const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+          if (isMounted) {
+            // eslint-disable-next-line no-console
+            console.debug("[useSession] auth state change", { event, hasSession: !!newSession });
+            setSession(newSession ?? null);
+          }
         });
         sub = listener?.subscription || null;
-      } catch {
+      } catch (e) {
         if (isMounted) setLoading(false);
+        // eslint-disable-next-line no-console
+        console.warn("[useSession] error", e);
       }
     }
 

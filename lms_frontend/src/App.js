@@ -46,6 +46,9 @@ function App() {
     }
   })();
 
+  // eslint-disable-next-line no-console
+  console.debug("[App] render, supabaseMode:", supabaseMode);
+
   const maybeProtect = (element) =>
     supabaseMode ? <ProtectedRoute>{element}</ProtectedRoute> : element;
 

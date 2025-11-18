@@ -12,23 +12,40 @@ export function ProtectedRoute({ children }) {
   const { isAuthenticated, initializing } = useAuth();
   const location = useLocation();
 
-  // While auth state is initializing, avoid bouncing routes.
-  if (initializing) {
-    return null;
-  }
-
-  // Prevent redirect from auth pages to themselves to avoid loops
   const path = location.pathname || "";
+  const search = location.search || "";
   const isAuthRelatedPath = path.startsWith("/login") || path.startsWith("/oauth/callback");
+
+  // Diagnostic tracing
+  // eslint-disable-next-line no-console
+  console.debug("[ProtectedRoute]", {
+    path,
+    search,
+    isAuthenticated,
+    initializing,
+    isAuthRelatedPath,
+  });
+
+  // While auth state is initializing, avoid bouncing routes. Render children or a minimal placeholder.
+  if (initializing) {
+    return <div style={{ padding: 8, fontSize: 12 }}>Loading authentication…</div>;
+  }
 
   if (!isAuthenticated) {
     if (isAuthRelatedPath) {
       // Already on an auth page; render children instead of redirecting to prevent recursion.
+      // eslint-disable-next-line no-console
+      console.debug("[ProtectedRoute] unauthenticated but on auth path, rendering children");
       return children;
     }
-    const next = encodeURIComponent(location.pathname + location.search);
+    const next = encodeURIComponent(path + search);
+    // eslint-disable-next-line no-console
+    console.debug("[ProtectedRoute] redirecting to /login with next:", next);
     return <Navigate to={`/login?next=${next}`} replace />;
   }
+
+  // eslint-disable-next-line no-console
+  console.debug("[ProtectedRoute] authenticated, rendering children");
   return children;
 }
 
@@ -40,17 +57,27 @@ export function ProtectedRoute({ children }) {
 export function RequireRole({ roles = [], children }) {
   const { user, profile, initializing } = useAuth();
   const currentRole = profile?.role || user?.role || "guest";
+  const location = useLocation();
+  const path = location.pathname || "";
+
+  // Diagnostic tracing
+  // eslint-disable-next-line no-console
+  console.debug("[RequireRole]", { roles, currentRole, initializing, path });
 
   // Do not redirect while initializing to avoid thrash
   if (initializing) {
-    return null;
+    return <div style={{ padding: 8, fontSize: 12 }}>Loading role…</div>;
   }
 
   if (roles.length > 0 && !roles.includes(currentRole)) {
     // Avoid redirect loop if already navigating to dashboard redirector
     if (window.location.pathname !== "/dashboard") {
+      // eslint-disable-next-line no-console
+      console.debug("[RequireRole] role mismatch, redirecting to /dashboard from", path);
       return <Navigate to="/dashboard" replace />;
     }
+    // eslint-disable-next-line no-console
+    console.debug("[RequireRole] already on /dashboard, rendering children");
   }
   return children;
 }

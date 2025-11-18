@@ -87,9 +87,15 @@ export function AuthProvider({ children }) {
     let mounted = true;
 
     async function init() {
+      // Diagnostic tracing
+      // eslint-disable-next-line no-console
+      console.debug("[AuthProvider.init] start", { supabaseEnabled });
+
       if (!supabaseEnabled) {
         setUser(defaultGuest);
         setInitializing(false);
+        // eslint-disable-next-line no-console
+        console.debug("[AuthProvider.init] guest mode");
         return;
       }
       try {
@@ -98,14 +104,20 @@ export function AuthProvider({ children }) {
         if (!sessionData?.session?.user) {
           // not signed in
           setUser(null);
+          // eslint-disable-next-line no-console
+          console.debug("[AuthProvider.init] no session -> user=null");
         } else {
           // build profile
           const profile = await loadSupabaseProfile(sessionData.session.user.id, sessionData.session.user.email);
           if (!mounted) return;
           setUser(profile);
+          // eslint-disable-next-line no-console
+          console.debug("[AuthProvider.init] profile loaded", { role: profile?.role });
         }
-      } catch (_) {
+      } catch (e) {
         if (mounted) setUser(null);
+        // eslint-disable-next-line no-console
+        console.warn("[AuthProvider.init] error", e);
       } finally {
         if (mounted) setInitializing(false);
       }
@@ -114,8 +126,10 @@ export function AuthProvider({ children }) {
       if (!subRef.current) {
         try {
           const supabase = getSupabase();
-          const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+          const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!mounted) return;
+            // eslint-disable-next-line no-console
+            console.debug("[AuthProvider.authChange]", { event, hasSession: !!session });
             if (session?.user) {
               const profile = await loadSupabaseProfile(session.user.id, session.user.email);
               setUser(profile);
@@ -124,8 +138,9 @@ export function AuthProvider({ children }) {
             }
           });
           subRef.current = listener?.subscription || null;
-        } catch {
-          // ignore
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn("[AuthProvider] failed to subscribe auth changes", e);
         }
       }
     }
@@ -192,8 +207,8 @@ export function AuthProvider({ children }) {
     setUser(defaultGuest);
   }, [defaultGuest, supabaseEnabled]);
 
-  const value = useMemo(
-    () => ({
+  const value = useMemo(() => {
+    const v = {
       user,
       // expose a derived profile-like shape for convenience in guards/pages
       profile: user?.profile || null,
@@ -203,9 +218,17 @@ export function AuthProvider({ children }) {
       logout,
       isAuthenticated: supabaseEnabled ? !!user : true,
       flags,
-    }),
-    [user, initializing, refresh, login, logout, flags, supabaseEnabled]
-  );
+    };
+    // Diagnostic tracing for value stability and state
+    // eslint-disable-next-line no-console
+    console.debug("[AuthProvider.value]", {
+      initializing,
+      isAuthenticated: v.isAuthenticated,
+      role: v.profile?.role,
+      guestMode: !supabaseEnabled,
+    });
+    return v;
+  }, [user, initializing, refresh, login, logout, flags, supabaseEnabled]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
