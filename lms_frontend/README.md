@@ -1,36 +1,46 @@
 # OceanLMS Frontend
 
-React-based LMS frontend with cookie-based authentication via a secure backend.
+React-based LMS frontend with two supported integration modes:
 
-Security stance:
-- No Supabase client SDK is initialized in the browser.
-- No Supabase anon or service keys are present anywhere in frontend code or responses.
-- All authentication and data access go through backend proxy endpoints using HTTP-only cookies.
+1) Backend proxy mode (default, recommended for production security):
+- No Supabase client SDK in the browser
+- Cookie-based sessions via secure backend
+- All data via backend proxy endpoints
+
+2) Direct Supabase browser mode (feature-flagged for simpler setups):
+- Initializes Supabase client in the browser using anon key
+- Uses RLS to limit data access
+- Auth handled by supabase.auth (email/password, magic link)
+- No service role key is ever used client-side
+
+Security notes:
+- No service role or private secrets in frontend code.
+- In Supabase mode, the anon key is considered public. Ensure tight RLS policies.
+- In proxy mode, the browser never sees Supabase keys or tokens.
 
 ## Key Characteristics
 - Routing with react-router-dom (v6)
-- Cookie-based auth (GET /auth/me, GET /auth/login?provider=..., POST /auth/logout)
-- API client sends credentials and redirects to /login on 401
+- Auth and data services switch based on feature flag
 - Ocean Professional theme (blue primary, amber secondary)
 - Core pages: /login, /oauth/callback, /dashboard, /paths, /paths/:id, /courses, /courses/:id, /assignments, /grades
 
 ## Environment Variables
 Create a `.env` using `.env.example` as reference:
+
+Required/general:
+- REACT_APP_FRONTEND_URL: This app URL used for redirects (e.g., https://app.oceanlms.example.com)
 - REACT_APP_BACKEND_URL: Base URL for backend proxy (e.g., https://api.oceanlms.example.com)
-- REACT_APP_FRONTEND_URL: This app URL used for redirect_to/callbacks (e.g., https://app.oceanlms.example.com)
-- REACT_APP_LOG_LEVEL: debug|info|warn|error (optional)
-
-Additional container variables that may be present:
-- REACT_APP_API_BASE, REACT_APP_WS_URL, REACT_APP_NODE_ENV, REACT_APP_NEXT_TELEMETRY_DISABLED, REACT_APP_ENABLE_SOURCE_MAPS, REACT_APP_PORT, REACT_APP_TRUST_PROXY, REACT_APP_HEALTHCHECK_PATH, REACT_APP_FEATURE_FLAGS, REACT_APP_EXPERIMENTS_ENABLED
-
-Feature flags:
-- REACT_APP_FEATURE_FLAGS: JSON object or comma list. Examples:
-  - JSON: {"charts": true, "newDashboard": false}
-  - List: charts,newDashboard
+- REACT_APP_FEATURE_FLAGS: JSON object or comma list
+  - Enable Supabase mode by adding FLAG_SUPABASE_MODE=true (in JSON) or FLAG_SUPABASE_MODE (in list)
+- REACT_APP_HEALTHCHECK_PATH: optional health path
 - REACT_APP_EXPERIMENTS_ENABLED: "true"/"false"
-- Health page path: REACT_APP_HEALTHCHECK_PATH (default "/health")
 
-Never put Supabase URL/keys in frontend. All auth happens via backend.
+Supabase mode (only used when FLAG_SUPABASE_MODE is enabled):
+- REACT_APP_SUPABASE_URL
+- REACT_APP_SUPABASE_ANON_KEY
+
+Additional container variables may exist:
+- REACT_APP_API_BASE, REACT_APP_WS_URL, REACT_APP_NODE_ENV, REACT_APP_NEXT_TELEMETRY_DISABLED, REACT_APP_ENABLE_SOURCE_MAPS, REACT_APP_PORT, REACT_APP_TRUST_PROXY
 
 ## Scripts
 - `npm start` - start dev server
@@ -38,58 +48,42 @@ Never put Supabase URL/keys in frontend. All auth happens via backend.
 - `npm run build` - production build
 
 ## Architecture
-- src/apiClient.js: fetch wrapper with credentials and 401 handling
-- src/context/AuthContext.js: auth state and PrivateRoute
-- src/layouts/AppLayout.js, src/components/TopNav.js, src/components/Sidebar.js: layout
-- src/pages/*: pages
+- src/lib/supabaseClient.js: client SDK and feature flag check
+- src/apiClient.js: backend proxy fetch wrapper
+- src/context/AuthContext.js: auth state; uses supabase.auth in Supabase mode or /auth/me in proxy mode
+- src/services/*: paths/courses/progress switch between Supabase and proxy endpoints
+- src/pages/LoginPage.js: supports email/password, magic link in Supabase mode; redirects to backend in proxy mode
+- src/layouts and components: UI
 - src/theme.js: theme variables applied to :root
 
-## Backend Proxy Contract (Summary)
-The frontend expects a secure backend that:
-- Manages authentication and sessions using HTTP-only cookies
-- Implements PKCE for OAuth providers so no tokens/keys are exposed to the browser
-- Proxies data operations to Supabase (server-side)
+## Supabase Browser Mode
+Enable with REACT_APP_FEATURE_FLAGS containing FLAG_SUPABASE_MODE=true.
 
-Required endpoints:
-- GET /auth/login?provider=<prov>&redirect_to=<FRONTEND_URL>/oauth/callback  
-  Initiates login (email or OAuth). Backend handles PKCE and redirects through provider.
-- GET /auth/callback  
-  Completes auth, sets HTTP-only session cookie, then redirects back to `${REACT_APP_FRONTEND_URL}/oauth/callback?next=...`.
-- GET /auth/me -> { user: {...} } or 401  
-  Returns the current authenticated user based on session cookie.
-- POST /auth/logout  
-  Clears session cookie.
+Auth flow:
+- On load, AuthContext calls supabase.auth.getSession() and subscribes to onAuthStateChange
+- Profile role is fetched from 'profiles' table by user id (expects profiles.id = auth.user.id)
+- Role-based UI gates rely on profile.role (admin, instructor, student)
 
-CORS settings (backend):
-- Access-Control-Allow-Origin: exactly `${REACT_APP_FRONTEND_URL}`
-- Access-Control-Allow-Credentials: true
-- Allow methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
-- Allow headers: Content-Type, Authorization, X-Requested-With
+Tables and RLS assumptions:
+- profiles(id uuid pk, full_name text, role text) with RLS: user can select/update own row
+- learning_paths(id uuid pk, title text, description text, ...): RLS: all authenticated can select; inserts/updates limited to instructors/admins
+- courses(id uuid pk, title text, description text, instructor text, path_id uuid, video_url text, embed_url text): RLS: select for all authenticated; writes limited to instructors/admins
+- enrollments(user_id uuid, course_id uuid, status text, created_at timestamptz): RLS: user can manage own rows
+- user_course_progress(user_id uuid, course_id uuid, progress_percent int, status text, time_spent_seconds int, updated_at timestamptz): RLS: user can manage own rows
 
-Cookie guidance:
-- HttpOnly; Secure; SameSite=Lax (or SameSite=None; Secure if cross-site is required)
-- Do not store Supabase tokens in browser-accessible storage.
+Security considerations:
+- Only anon key in frontend; rely on RLS to scope data
+- Never expose service role key
+- Validate RLS policies to ensure users can only see their own enrollments/progress and public course/path data
 
-Example data proxy endpoints:
-- GET /api/courses -> [ { id, title, description } ]
-- GET /api/courses/:id -> { id, title, description, instructor, modules: [...] }
-- GET /api/assignments -> [ { id, title, courseTitle, dueDate } ]
-- GET /api/grades -> [ { id, courseTitle, overall, updatedAt } ]
-- GET /api/dashboard/summary -> { activeCourses, assignmentsDue, avgGrade }
-- GET /api/learning-paths -> [ { id, title, description, progressPercent } ]
-- GET /api/learning-paths/:id -> { id, title, description }
-- GET /api/learning-paths/:id/courses -> [ { id, title, enrolled, progressPercent } ]
-- POST /api/courses/:id/enroll|start|complete -> 204|200
-
-See kavia-docs/backend-proxy-contract.md for full details.
+## Backend Proxy Mode (Summary)
+Same as described previously (see kavia-docs/backend-proxy-contract.md). The app will use:
+- GET /auth/me, /auth/login, /auth/logout
+- /api/... endpoints for data
 
 ## Notes
-Backend must implement:
-- GET /auth/me -> { user: {...} } or 401
-- GET /auth/login?provider=<prov>&redirect_to=<url>
-- GET /auth/callback (sets session cookie then redirects to FE /oauth/callback)
-- POST /auth/logout
-- Data proxies used by pages: /api/courses, /api/courses/:id, /api/learning-paths, /api/learning-paths/:id, /api/learning-paths/:id/courses, /assignments, /grades, /dashboard/summary
+- Feature-flag switch ensures both integration patterns are supported without code removal.
+- ProtectedRoute/role checks rely on AuthContext user.role which comes from profiles.role in Supabase mode.
 
 Player routing:
 - The player lives at `/courses/:id` (CoursePlayerPage). Links from course lists and learning path courses point here for a consistent start/complete experience.
