@@ -10,10 +10,11 @@ export async function listPaths() {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("learning_paths")
-      .select("id, title, description, thumbnail_url, created_at")
+      .select("id, title, description, thumbnail, created_at")
       .order("created_at", { ascending: false });
     if (error) throw error;
-    return data || [];
+    // Map DB field 'thumbnail' to UI field 'thumbnail_url' for consistency
+    return (data || []).map((p) => ({ ...p, thumbnail_url: p.thumbnail }));
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn("listPaths fallback to empty due to error:", e?.message || e);
@@ -31,19 +32,21 @@ export async function getPathById(id) {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("learning_paths")
-      .select("id, title, description, thumbnail_url")
+      .select("id, title, description, thumbnail")
       .eq("id", id)
       .single();
     if (error) throw error;
 
     const { data: courses, error: cErr } = await supabase
       .from("courses")
-      .select("id, title, description, thumbnail_url, path_id, created_at")
+      .select("id, title, description, thumbnail, path_id, created_at")
       .eq("path_id", id)
       .order("created_at", { ascending: true });
     if (cErr) throw cErr;
 
-    return { ...data, courses: courses || [] };
+    const mappedPath = data ? { ...data, thumbnail_url: data.thumbnail } : null;
+    const mappedCourses = (courses || []).map((c) => ({ ...c, thumbnail_url: c.thumbnail }));
+    return mappedPath ? { ...mappedPath, courses: mappedCourses } : null;
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn("getPathById returning null due to error:", e?.message || e);

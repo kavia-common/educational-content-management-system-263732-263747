@@ -10,11 +10,15 @@ export async function listLessonsByCourse(courseId) {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from('lessons')
-      .select('id, title, description, video_url, course_id, position, thumbnail_url')
+      .select('id, title, video_url, course_id, thumbnail, created_at')
       .eq('course_id', courseId)
-      .order('position', { ascending: true });
+      .order('created_at', { ascending: true });
     if (error) throw error;
-    return data || [];
+    return (data || []).map((l, idx) => ({
+      ...l,
+      thumbnail_url: l.thumbnail,
+      position: idx + 1,
+    }));
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('listLessonsByCourse fallback to empty due to error:', e?.message || e);
@@ -32,11 +36,11 @@ export async function getLessonById(id) {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from('lessons')
-      .select('id, title, description, video_url, course_id, position, thumbnail_url')
+      .select('id, title, video_url, course_id, thumbnail, created_at')
       .eq('id', id)
       .single();
     if (error) throw error;
-    return data;
+    return data ? { ...data, thumbnail_url: data.thumbnail } : null;
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('getLessonById returning null due to error:', e?.message || e);

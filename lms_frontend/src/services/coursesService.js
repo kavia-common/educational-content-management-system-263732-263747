@@ -10,10 +10,10 @@ export async function listCourses() {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("courses")
-      .select("id, title, description, thumbnail_url, path_id, created_at")
+      .select("id, title, description, thumbnail, path_id, created_at")
       .order("created_at", { ascending: false });
     if (error) throw error;
-    return data || [];
+    return (data || []).map((c) => ({ ...c, thumbnail_url: c.thumbnail }));
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn("listCourses fallback to empty due to error:", e?.message || e);
@@ -31,11 +31,11 @@ export async function listCoursesByPath(pathId) {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("courses")
-      .select("id, title, description, thumbnail_url, path_id, created_at")
+      .select("id, title, description, thumbnail, path_id, created_at")
       .eq("path_id", pathId)
       .order("created_at", { ascending: true });
     if (error) throw error;
-    return data || [];
+    return (data || []).map((c) => ({ ...c, thumbnail_url: c.thumbnail }));
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn("listCoursesByPath fallback to empty due to error:", e?.message || e);
@@ -53,20 +53,27 @@ export async function getCourseById(id) {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("courses")
-      .select("id, title, description, thumbnail_url, path_id, instructor, video_url, embed_url")
+      .select("id, title, description, thumbnail, path_id, created_at")
       .eq("id", id)
       .single();
     if (error) throw error;
 
     const { data: lessons, error: lErr } = await supabase
       .from("lessons")
-      .select("id, title, description, video_url, course_id, position, thumbnail_url")
+      .select("id, title, video_url, course_id, thumbnail, created_at")
       .eq("course_id", id)
-      .order("position", { ascending: true });
+      .order("created_at", { ascending: true });
 
     if (lErr) throw lErr;
 
-    return { ...data, lessons: lessons || [], modules: lessons || [] };
+    const mappedCourse = data ? { ...data, thumbnail_url: data.thumbnail } : null;
+    const mappedLessons = (lessons || []).map((l, idx) => ({
+      ...l,
+      thumbnail_url: l.thumbnail,
+      // provide a synthetic position for UI ordering if needed
+      position: idx + 1,
+    }));
+    return mappedCourse ? { ...mappedCourse, lessons: mappedLessons, modules: mappedLessons } : null;
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn("getCourseById returning null due to error:", e?.message || e);
