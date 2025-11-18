@@ -1,9 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 
 /**
- * IMPORTANT: Browser usage must ONLY use the Supabase anon public key.
- * Never use a service role key in frontend code. Ensure REACT_APP_SUPABASE_KEY
- * (or REACT_APP_SUPABASE_ANON_KEY) is set to the anon key and RLS policies are enforced.
+ * IMPORTANT: Prefer using src/lib/supabaseClient.getSupabase() which includes
+ * feature-flag checks and env validation.
+ * This fallback export should not be imported by pages; it exists for legacy imports only.
+ * Never use a service role key in frontend code.
  */
 
 // PUBLIC_INTERFACE

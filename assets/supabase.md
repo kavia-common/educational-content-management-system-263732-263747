@@ -16,6 +16,7 @@ Auth:
 - AuthContext uses supabase.auth.getSession() and onAuthStateChange
 - Profile role is read from profiles table by id
 - LoginPage offers email/password sign in/up and magic link (signInWithOtp)
+- REACT_APP_REQUIRE_SUPABASE_AUTH: if set to true, ensure user signs in before data fetch. When false, configure an anon-friendly SELECT RLS policy for read-only tables like learning_paths.
 
 Tables and RLS (assumptions):
 - profiles(id uuid pk, full_name text, role text)

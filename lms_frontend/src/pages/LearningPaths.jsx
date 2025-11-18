@@ -9,6 +9,7 @@ import { isSupabaseMode, getSupabase } from "../lib/supabaseClient";
  * - Queries Supabase learning_paths table on mount.
  * - Uses anon/public key from env via existing supabase client factory.
  * - Displays friendly guidance if env vars are missing or Supabase mode disabled.
+ * - Adds robust console logging for diagnostics and hints for RLS/auth issues.
  */
 export default function LearningPaths() {
   const [paths, setPaths] = useState([]);
@@ -22,31 +23,35 @@ export default function LearningPaths() {
     return { url, key, hasEnv: Boolean(url && key) };
   }, []);
 
-  const canUseSupabase = isSupabaseMode() && supabaseEnv.hasEnv;
-
   useEffect(() => {
     let isActive = true;
+
     async function fetchPaths() {
       setLoading(true);
       setErr(null);
 
-      // Friendly guidance if env not present or mode disabled
+      // Feature flag and env checks with helpful messages
       if (!isSupabaseMode()) {
-        setErr({
+        const e = {
           code: "SUPABASE_MODE_DISABLED",
           message:
             "Supabase browser SDK is disabled. Enable it by setting FLAG_SUPABASE_MODE=true in REACT_APP_FEATURE_FLAGS.",
-        });
+        };
+        console.warn("[LearningPaths] Supabase mode disabled. Hints: set REACT_APP_FEATURE_FLAGS to {\"FLAG_SUPABASE_MODE\":true} or include FLAG_SUPABASE_MODE in a comma list.");
+        setErr(e);
         setPaths([]);
         setLoading(false);
         return;
       }
+
       if (!supabaseEnv.hasEnv) {
-        setErr({
+        const e = {
           code: "SUPABASE_ENV_MISSING",
           message:
             "Missing Supabase configuration. Please set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_KEY (anon) in your environment.",
-        });
+        };
+        console.error("[LearningPaths] Missing env. Check REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_KEY. Do NOT use service_role in frontend.");
+        setErr(e);
         setPaths([]);
         setLoading(false);
         return;
@@ -54,12 +59,29 @@ export default function LearningPaths() {
 
       try {
         const client = getSupabase();
-        const { data, error } = await client.from("learning_paths").select("*");
+
+        // Fetch learning paths, order by created_at if exists
+        const { data, error } = await client
+          .from("learning_paths")
+          .select("id,title,description,image_url,created_at");
+
         if (!isActive) return;
         if (error) throw error;
+
         setPaths(Array.isArray(data) ? data : []);
+        console.info("[LearningPaths] Loaded", (data || []).length, "paths");
       } catch (e) {
         if (!isActive) return;
+
+        // Add RLS/auth hints if common Supabase error codes/messages appear
+        const msg = (e && (e.message || e.error_description)) || String(e);
+        if (String(msg).toLowerCase().includes("permission") || String(e?.code).includes("PGRST")) {
+          console.error(
+            "[LearningPaths] RLS/auth may be blocking select on learning_paths. " +
+              "Ensure RLS policy allows SELECT for anonymous or authenticated users based on your mode."
+          );
+        }
+        console.error("[LearningPaths] Failed to fetch learning_paths:", e);
         setErr(e);
       } finally {
         if (isActive) setLoading(false);
@@ -83,7 +105,10 @@ export default function LearningPaths() {
   return (
     <div className="flex">
       <Sidebar />
-      <div className="ml-64 w-full p-6 min-h-screen" style={{ background: "linear-gradient(180deg, rgba(37,99,235,0.06), rgba(249,250,251,1))" }}>
+      <div
+        className="ml-64 w-full p-6 min-h-screen"
+        style={{ background: "linear-gradient(180deg, rgba(37,99,235,0.06), rgba(249,250,251,1))" }}
+      >
         <Navbar />
         <h1 className="text-3xl font-bold mb-1 text-[var(--color-text)]">Learning Paths</h1>
         <p className="text-[var(--color-muted)] mb-6">Curated sequences of courses</p>
@@ -106,16 +131,29 @@ export default function LearningPaths() {
                 <button
                   className="px-4 py-2 rounded-lg text-white"
                   style={{ backgroundColor: "var(--color-primary)", boxShadow: "var(--shadow)" }}
-                  onClick={() => {
-                    // simple reload
-                    window.location.reload();
-                  }}
+                  onClick={() => window.location.reload()}
                 >
                   Retry
                 </button>
                 <details className="text-sm text-[var(--color-muted)]">
                   <summary>Error details</summary>
-                  <pre className="mt-2 whitespace-pre-wrap break-words">{(err && (err.code || err.status) ? `[${err.code || err.status}] ` : "") + (err?.message || String(err))}</pre>
+                  <pre className="mt-2 whitespace-pre-wrap break-words">
+                    {(err && (err.code || err.status) ? `[${err.code || err.status}] ` : "") +
+                      (err?.message || String(err))}
+                  </pre>
+                  <div className="mt-2">
+                    <p className="text-[var(--color-muted)]">
+                      Troubleshooting:
+                      <ul className="list-disc ml-5">
+                        <li>Verify REACT_APP_FEATURE_FLAGS includes FLAG_SUPABASE_MODE=true.</li>
+                        <li>Set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_KEY (anon) env vars.</li>
+                        <li>Confirm table name is learning_paths and columns: id, title, description, image_url.</li>
+                        <li>
+                          If using RLS, ensure SELECT policy allows your current auth context (anon or authenticated).
+                        </li>
+                      </ul>
+                    </p>
+                  </div>
                 </details>
               </div>
             }

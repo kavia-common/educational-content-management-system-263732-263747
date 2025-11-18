@@ -10,10 +10,24 @@ export const pathsService = {
   async list() {
     /** Fetches array of learning paths */
     if (isSupabaseMode()) {
-      const supabase = getSupabase();
-      const { data, error } = await supabase.from("learning_paths").select("*").order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
+      try {
+        const supabase = getSupabase();
+        const { data, error } = await supabase
+          .from("learning_paths")
+          .select("id,title,description,image_url,created_at")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        return data || [];
+      } catch (e) {
+        // Include hint about table/columns and RLS
+        const err = new Error(
+          `Failed to load learning_paths from Supabase: ${e?.message || e}. ` +
+            `Verify the table/columns exist and RLS allows SELECT for your auth context.`
+        );
+        err.cause = e;
+        err.code = e?.code || "SUPABASE_QUERY_FAILED";
+        throw err;
+      }
     }
     return apiJson("/api/learning-paths", { method: "GET" });
   },
@@ -28,8 +42,16 @@ export const pathsService = {
     }
     if (isSupabaseMode()) {
       const supabase = getSupabase();
-      const { data, error } = await supabase.from("learning_paths").select("*").eq("id", id).single();
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from("learning_paths")
+        .select("id,title,description,image_url,created_at")
+        .eq("id", id)
+        .single();
+      if (error) {
+        const err = new Error(`Failed to load learning_path ${id}: ${error.message}`);
+        err.code = error.code || "SUPABASE_QUERY_FAILED";
+        throw err;
+      }
       return data;
     }
     return apiJson(`/api/learning-paths/${encodeURIComponent(id)}`, { method: "GET" });
@@ -45,10 +67,16 @@ export const pathsService = {
     }
     if (isSupabaseMode()) {
       const supabase = getSupabase();
-      // Assuming a join table learning_path_courses(path_id, course_id) or courses table has path_id column.
-      // Prefer simple schema: courses has path_id foreign key.
-      const { data, error } = await supabase.from("courses").select("*").eq("path_id", id);
-      if (error) throw error;
+      // Assuming courses has path_id foreign key.
+      const { data, error } = await supabase
+        .from("courses")
+        .select("id,title,description,instructor,path_id,created_at,thumbnail_url")
+        .eq("path_id", id);
+      if (error) {
+        const err = new Error(`Failed to load courses for path ${id}: ${error.message}`);
+        err.code = error.code || "SUPABASE_QUERY_FAILED";
+        throw err;
+      }
       return data || [];
     }
     return apiJson(`/api/learning-paths/${encodeURIComponent(id)}/courses`, { method: "GET" });
