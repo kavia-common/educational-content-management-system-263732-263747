@@ -55,6 +55,14 @@ Required/general:
 - REACT_APP_HEALTHCHECK_PATH: optional health path
 - REACT_APP_EXPERIMENTS_ENABLED: "true"/"false"
 
+Auth guard behavior (AuthRoute):
+- By default, guest mode is allowed and protected routes like `/courses` and `/paths` are accessible.
+- To enforce Supabase authentication, set:
+  - REACT_APP_REQUIRE_SUPABASE_AUTH=true
+  - REACT_APP_SUPABASE_URL
+  - REACT_APP_SUPABASE_KEY (anon public key)
+- If `REACT_APP_REQUIRE_SUPABASE_AUTH=true` but Supabase env vars are missing, the guard redirects to `/signin`.
+
 Supabase mode (only used when FLAG_SUPABASE_MODE is enabled):
 - REACT_APP_SUPABASE_URL
 - REACT_APP_SUPABASE_KEY (preferred) or REACT_APP_SUPABASE_ANON_KEY (legacy alias)
