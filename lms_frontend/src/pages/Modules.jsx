@@ -38,7 +38,7 @@ export default function Modules() {
   return (
     <div className="flex">
       <Sidebar />
-      <div className="ml-64 w-full p-6 bg-gradient-to-b from-blue-500/10 to-gray-50 min-h-screen">
+      <div className="ml-64 w-full p-6 bg-ocean-gradient min-h-screen">
         <Navbar />
         <h1 className="text-3xl font-bold mb-2 text-[var(--color-text)]">Modules</h1>
         <p className="text-[var(--color-muted)] mb-6">Course content breakdown</p>

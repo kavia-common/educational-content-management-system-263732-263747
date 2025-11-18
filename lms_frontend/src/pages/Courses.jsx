@@ -34,7 +34,7 @@ export default function Courses() {
   return (
     <div className="flex">
       <Sidebar />
-      <div className="ml-64 w-full p-6 bg-gradient-to-b from-blue-500/10 to-gray-50 min-h-screen">
+      <div className="ml-64 w-full p-6 bg-ocean-gradient min-h-screen">
         <Navbar />
         <h1 className="text-3xl font-bold mb-1 text-[var(--color-text)]">Courses</h1>
         <p className="text-[var(--color-muted)] mb-6">Browse and open modules</p>
@@ -48,7 +48,7 @@ export default function Courses() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {courses.map((c) => (
-            <div key={c.id} className="card p-5">
+            <div key={c.id} className="card p-5 hover:shadow-ocean-lg transition-shadow">
               {c.image_url && <img src={c.image_url} className="rounded-lg mb-4" alt="" />}
               <h2 className="text-xl font-bold text-[var(--color-text)]">{c.title}</h2>
               <p className="text-[var(--color-muted)]">{c.duration}</p>

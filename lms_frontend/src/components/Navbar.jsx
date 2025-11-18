@@ -15,7 +15,7 @@ export default function Navbar() {
     window.location.href = "/signin";
   }
   return (
-    <div className="w-full bg-[var(--color-surface)] shadow p-4 flex justify-end border-b border-gray-100 rounded-xl">
+    <div className="ocean-navbar rounded-xl">
       <button
         className="btn btn-error rounded-lg"
         onClick={logout}

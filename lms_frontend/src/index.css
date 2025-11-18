@@ -8,7 +8,7 @@
 :root {
   --color-primary: #2563EB;
   --color-secondary: #F59E0B;
-  --color-success: #F59E0B;
+  --color-success: #10B981;
   --color-error: #EF4444;
   --color-text: #111827;
   --color-muted: #6B7280;
@@ -17,7 +17,9 @@
   --color-border: #E5E7EB;
 
   --radius: 12px;
+  --radius-lg: 16px;
   --shadow: 0 4px 12px rgba(0,0,0,0.06);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.08);
   --focus-ring: 0 0 0 3px rgba(37,99,235,0.35), 0 0 0 6px rgba(255,255,255,0.9);
 }
 
@@ -37,12 +39,12 @@ a {
   color: var(--color-primary); 
   text-decoration: none;
 }
-a:hover {
+a:hover, a:focus-visible {
   text-decoration: underline;
 }
 
 /* Generic focus visibility for links and inputs */
-a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
   border-radius: 8px;
@@ -54,22 +56,65 @@ code {
 
 /* Component utilities reflecting theme via @apply */
 @layer components {
+  /* Containers and surfaces */
+  .ocean-surface {
+    @apply bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow;
+  }
+  .ocean-hero {
+    @apply bg-ocean-gradient;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow;
+  }
+  .card-lg {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Buttons */
   .btn {
-    @apply inline-flex items-center justify-center font-bold rounded-xl px-4 py-2 transition-all shadow;
+    @apply inline-flex items-center justify-center font-bold rounded-xl px-4 py-2 transition-all shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60;
   }
   .btn-primary {
-    @apply text-white bg-[var(--color-primary)] hover:brightness-95;
+    @apply text-white bg-[var(--color-primary)] hover:brightness-95 active:brightness-90;
   }
   .btn-secondary {
-    @apply text-[var(--color-text)] bg-[var(--color-secondary)] hover:brightness-95;
+    @apply text-[var(--color-text)] bg-[var(--color-secondary)] hover:brightness-95 active:brightness-90;
+  }
+  .btn-ghost {
+    @apply text-[var(--color-primary)] bg-transparent hover:bg-blue-50;
   }
   .btn-error {
-    @apply text-white bg-[var(--color-error)] hover:brightness-95;
+    @apply text-white bg-[var(--color-error)] hover:brightness-95 active:brightness-90;
   }
-  .card {
-    @apply bg-[var(--color-surface)] border border-[#E5E7EB] rounded-2xl shadow;
+
+  /* Inputs */
+  .input {
+    @apply w-full px-3 py-2 border border-[var(--color-border)] rounded-xl bg-white text-[var(--color-text)] placeholder-[var(--color-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60;
   }
+
+  /* Badges */
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-sm bg-[var(--color-secondary)] text-[var(--color-text)];
+  }
+  .badge-success {
+    @apply bg-[var(--color-success)] text-white;
+  }
+  .badge-error {
+    @apply bg-[var(--color-error)] text-white;
+  }
+
+  /* Sidebar and Navbar helpers */
+  .ocean-sidebar {
+    @apply bg-[#0B1220] text-slate-200;
+  }
+  .ocean-sidebar-link {
+    @apply px-3 py-2 rounded-lg transition border border-transparent text-slate-300 hover:bg-blue-500/10 hover:text-slate-50;
+  }
+
+  .ocean-navbar {
+    @apply w-full bg-[var(--color-surface)] shadow p-4 flex justify-end border-b border-[var(--color-border)];
   }
 }

@@ -2,8 +2,10 @@
 export default function VideoPlayer({ url }) {
   /** Basic HTML5 video player for the simple LMS variant. */
   return (
-    <video controls className="w-full rounded-lg shadow-lg">
-      <source src={url} type="video/mp4" />
-    </video>
+    <div className="card p-2">
+      <video controls className="w-full rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-primary/60">
+        <source src={url} type="video/mp4" />
+      </video>
+    </div>
   );
 }

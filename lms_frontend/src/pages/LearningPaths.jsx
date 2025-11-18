@@ -31,7 +31,7 @@ export default function LearningPaths() {
   return (
     <div className="flex">
       <Sidebar />
-      <div className="ml-64 w-full p-6 bg-gradient-to-b from-blue-500/10 to-gray-50 min-h-screen">
+      <div className="ml-64 w-full p-6 bg-ocean-gradient min-h-screen">
         <Navbar />
         <h1 className="text-3xl font-bold mb-1 text-[var(--color-text)]">Learning Paths</h1>
         <p className="text-[var(--color-muted)] mb-6">Curated sequences of courses</p>
@@ -45,7 +45,7 @@ export default function LearningPaths() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {paths.map((p) => (
-            <div key={p.id} className="card p-4">
+            <div key={p.id} className="card p-4 hover:shadow-ocean-lg transition-shadow">
               {p.image_url && <img src={p.image_url} className="rounded-lg mb-4" alt="" />}
               <h2 className="text-xl font-bold text-[var(--color-text)]">{p.title}</h2>
               <p className="text-[var(--color-muted)]">{p.description}</p>

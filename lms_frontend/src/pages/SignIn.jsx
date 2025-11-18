@@ -13,21 +13,26 @@ export default function SignIn() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-xl shadow-xl w-96">
-        <h2 className="text-2xl font-bold mb-4">Sign In</h2>
-        <input
-          type="email"
-          className="w-full p-3 border rounded-lg mb-4"
-          placeholder="Enter email"
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <button
-          onClick={login}
-          className="w-full bg-blue-600 text-white p-3 rounded-lg"
-        >
-          Send Login Link
-        </button>
+    <div className="min-h-screen flex items-center justify-center bg-ocean-gradient p-4">
+      <div className="card card-lg w-full max-w-md">
+        <div className="p-8">
+          <h2 className="text-2xl font-bold mb-2 text-[var(--color-text)]">Sign In</h2>
+          <p className="text-[var(--color-muted)] mb-6">Receive a magic link to access your account</p>
+          <label className="block text-sm font-semibold text-[var(--color-text)] mb-1" htmlFor="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            className="input mb-4"
+            placeholder="you@example.com"
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <button
+            onClick={login}
+            className="btn btn-primary w-full"
+          >
+            Send Login Link
+          </button>
+        </div>
       </div>
     </div>
   );

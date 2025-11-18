@@ -10,15 +10,17 @@ import AuthRoute from "./components/AuthRoute.jsx";
 function App() {
   /** Simple LMS router variant using react-router-dom v6 with protected routes. */
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="/dashboard" element={<AuthRoute><Dashboard /></AuthRoute>} />
-        <Route path="/paths" element={<AuthRoute><LearningPaths /></AuthRoute>} />
-        <Route path="/courses" element={<AuthRoute><Courses /></AuthRoute>} />
-        <Route path="/courses/:courseId/modules" element={<AuthRoute><Modules /></AuthRoute>} />
-      </Routes>
-    </BrowserRouter>
+    <div className="min-h-screen bg-ocean-gradient">
+      <BrowserRouter>
+        <Routes>
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/dashboard" element={<AuthRoute><Dashboard /></AuthRoute>} />
+          <Route path="/paths" element={<AuthRoute><LearningPaths /></AuthRoute>} />
+          <Route path="/courses" element={<AuthRoute><Courses /></AuthRoute>} />
+          <Route path="/courses/:courseId/modules" element={<AuthRoute><Modules /></AuthRoute>} />
+        </Routes>
+      </BrowserRouter>
+    </div>
   );
 }
 export default App;
