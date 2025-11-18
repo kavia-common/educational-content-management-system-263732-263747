@@ -1,6 +1,6 @@
 # Supabase Setup Guide
 
-This document defines the minimal Supabase schema, essential Row Level Security (RLS) policies, and required Auth provider and redirect configuration for OceanLMS. It aligns with the current frontend code in lms_frontend and supports both prototype (direct browser) and backend-proxy modes.
+This document defines the minimal Supabase schema, essential Row Level Security (RLS) policies, and required Auth provider configuration for OceanLMS. It is consistent with the current frontend code and supports both direct browser mode and backend-proxy mode.
 
 ## Overview
 
@@ -9,11 +9,11 @@ OceanLMS uses Supabase for:
 - Storage of learner profiles, learning paths, courses, modules, enrollments, and progress
 
 Frontend behavior:
-- The frontend reads env vars REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY (or REACT_APP_SUPABASE_KEY) and initializes a browser client.
-- Authentication context looks up the user's profile from the profiles table by id = auth.uid().
-- Learning content is displayed via protected routes with role checks (e.g., admin-only authoring pages).
+- The frontend reads REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY (or REACT_APP_SUPABASE_KEY) and initializes a browser client.
+- AuthContext looks up the user's profile from the profiles table by id = auth.uid(), creating one on first login if missing.
+- Learning content is behind protected routes with role checks (e.g., admin-only authoring pages).
 
-Security reminder:
+Security reminders:
 - Never use the service role key in the browser.
 - Enable and verify RLS on all tables before enabling browser mode.
 
@@ -29,6 +29,8 @@ Optional container variables:
 - REACT_APP_BACKEND_URL
 - REACT_APP_FEATURE_FLAGS
 - REACT_APP_EXPERIMENTS_ENABLED
+
+See also: lms_frontend/README.md for the full .env list and Quick Start.
 
 ## Minimal Schema (SQL)
 
@@ -108,6 +110,7 @@ create table if not exists public.course_lessons (
   created_at timestamptz not null default now()
 );
 
+-- Uniqueness for idempotent upserts
 create unique index if not exists uq_course_lessons_course_title on public.course_lessons (course_id, title);
 ```
 
@@ -125,11 +128,7 @@ alter table public.enrollments enable row level security;
 alter table public.progress enable row level security;
 alter table public.course_lessons enable row level security;
 
--- Helper: admin_or_instructor check via profiles table
--- (Used inline in policies below via EXISTS)
--- No separate function required; we inline EXISTS(...) in policies.
-
--- profiles
+-- profiles (self read/update)
 drop policy if exists "profiles_self_select" on public.profiles;
 create policy "profiles_self_select"
 on public.profiles
@@ -145,7 +144,7 @@ to authenticated
 using (id = auth.uid())
 with check (id = auth.uid());
 
--- learning_paths: readable by all authenticated; only admins/instructors can write
+-- learning_paths: read for all authenticated; write for admin/instructor
 drop policy if exists "learning_paths_read" on public.learning_paths;
 create policy "learning_paths_read"
 on public.learning_paths
@@ -169,7 +168,7 @@ with check (
   )
 );
 
--- courses: readable by all authenticated; write restricted
+-- courses: read for all authenticated; write for admin/instructor
 drop policy if exists "courses_read" on public.courses;
 create policy "courses_read"
 on public.courses
@@ -193,7 +192,7 @@ with check (
   )
 );
 
--- modules: readable by all authenticated; write restricted
+-- modules: read for all authenticated; write for admin/instructor
 drop policy if exists "modules_read" on public.modules;
 create policy "modules_read"
 on public.modules
@@ -217,7 +216,7 @@ with check (
   )
 );
 
--- enrollments: user can manage their own enrollment rows
+-- enrollments: user can manage their own rows
 drop policy if exists "enrollments_user_rw" on public.enrollments;
 create policy "enrollments_user_rw"
 on public.enrollments
@@ -226,7 +225,7 @@ to authenticated
 using (user_id = auth.uid())
 with check (user_id = auth.uid());
 
--- progress: user can manage their own progress rows
+-- progress: user can manage their own rows
 drop policy if exists "progress_user_rw" on public.progress;
 create policy "progress_user_rw"
 on public.progress
@@ -235,7 +234,7 @@ to authenticated
 using (user_id = auth.uid())
 with check (user_id = auth.uid());
 
--- course_lessons: readable by all authenticated; write restricted to admin/instructor
+-- course_lessons: read for all authenticated; write for admin/instructor
 drop policy if exists "course_lessons_read" on public.course_lessons;
 create policy "course_lessons_read"
 on public.course_lessons
@@ -271,7 +270,7 @@ In Supabase Dashboard > Authentication > Providers:
 Required Redirect URLs (Dashboard > Authentication > URL Configuration):
 - http://localhost:3000/oauth/callback
 - http://localhost:3000/signin
-- Your production equivalents, e.g.:
+- Production equivalents, for example:
   - https://yourdomain.com/oauth/callback
   - https://yourdomain.com/signin
 
@@ -279,7 +278,7 @@ Frontend expects:
 - Email confirmations redirect to /signin
 - OAuth flows redirect to /oauth/callback
 
-These values are also derived using REACT_APP_FRONTEND_URL when invoking supabase.auth APIs in AuthContext.
+These values are derived using REACT_APP_FRONTEND_URL in AuthContext helpers.
 
 ## First-Time Setup Flow
 
@@ -287,17 +286,18 @@ These values are also derived using REACT_APP_FRONTEND_URL when invoking supabas
 2) Ensure "Enable email confirmations" and Email provider as desired.
 3) Add the Redirect URLs to Auth settings.
 4) In your application:
-   - Set .env in lms_frontend with REACT_APP_SUPABASE_URL, REACT_APP_SUPABASE_ANON_KEY, REACT_APP_FRONTEND_URL, REACT_APP_HEALTHCHECK_PATH
+   - Create lms_frontend/.env (copy .env.example if available)
+   - Set REACT_APP_SUPABASE_URL, REACT_APP_SUPABASE_ANON_KEY, REACT_APP_FRONTEND_URL, REACT_APP_HEALTHCHECK_PATH
    - npm install && npm start
    - Navigate to /signup to create a user
-5) Insert a profile row for your new user (or create an insert trigger that creates profiles on signup):
+5) Insert a profile row for your new user (or create an insert trigger to auto-create profiles):
 
 ```sql
 insert into public.profiles (id, full_name, role)
 values ('<auth_user_id>', 'Admin User', 'admin');
 ```
 
-Alternatively, create a trigger to auto-create profile on signup:
+Optional trigger to auto-create profile on signup:
 
 ```sql
 create or replace function public.handle_new_user()
@@ -316,49 +316,33 @@ after insert on auth.users
 for each row execute procedure public.handle_new_user();
 ```
 
-Note: You must mark the function as security definer and set appropriate privileges if needed.
+Note: Use security definer appropriately and ensure privileges.
 
 ## Seeding Course Lessons
 
-The project includes a dev utility to seed course lessons (public.course_lessons). To use:
-- Ensure FLAG_SUPABASE_MODE=true and, if implemented, FLAG_ALLOW_SEED=true in REACT_APP_FEATURE_FLAGS
-- Open /health in the running app
-- Click "Seed Course Lessons"
-
-The seed uses an upsert on (course_id, title).
-
-## Data Access Patterns in Frontend
-
-- AuthContext retrieves the current session and then selects the profile row:
-  - from "profiles" selecting id, full_name, role where id = auth.uid()
-- Services read from learning_paths and courses and join with enrollments and progress based on the current user.
-- Authoring pages require admin role; ensure the profile role is 'admin' for authors.
-
-Ensure the corresponding RLS rules above are present, otherwise reads/writes will fail in browser mode.
+- Ensure FLAG_SUPABASE_MODE=true and, if implemented, FLAG_ALLOW_SEED=true in REACT_APP_FEATURE_FLAGS.
+- Open /health in the running app and click "Seed Course Lessons".
+- The seed uses an upsert on (course_id, title) into public.course_lessons.
 
 ## Troubleshooting
 
-- 401 or empty results on queries:
-  - Check that the user is authenticated and RLS policies permit SELECT for authenticated users.
-  - Verify that profiles row exists for the user and contains correct role.
+- RLS “permission denied” or empty results:
+  - Verify authentication and that RLS policies permit the operation.
+  - Confirm a profiles row exists for your user with the correct role.
 
 - Cannot insert enrollments/progress:
-  - Confirm RLS with with check (user_id = auth.uid()).
-  - Ensure your insert payload sets user_id to the currently authenticated user's id.
+  - Ensure payload has user_id = auth.uid().
+  - Policies must include with check (user_id = auth.uid()).
 
-- OAuth redirect errors:
-  - Add http://localhost:3000/oauth/callback to Supabase Auth Redirect URLs.
+- OAuth/magic link redirect errors:
+  - Add http://localhost:3000/oauth/callback and http://localhost:3000/signin to Redirect URLs.
   - Ensure REACT_APP_FRONTEND_URL matches your development origin.
 
-- Magic link / signup email not redirecting properly:
-  - Add http://localhost:3000/signin to Redirect URLs.
-  - In AuthContext, emailRedirectTo points to `${REACT_APP_FRONTEND_URL}/signin`.
-
-- "Missing env vars" warnings:
-  - Set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY in lms_frontend/.env
+- “Missing env vars” warnings:
+  - Set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY (or REACT_APP_SUPABASE_KEY) in lms_frontend/.env.
 
 - Admin-only pages inaccessible:
-  - Ensure your user's profile row has role='admin' and RLS policies for writes rely on that role.
+  - Ensure your profiles.role = 'admin' and policies allow writes for admin/instructor.
 
 ## References
 
