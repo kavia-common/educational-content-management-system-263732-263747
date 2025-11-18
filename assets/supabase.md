@@ -7,7 +7,7 @@ Mode toggle:
 
 Environment variables required:
 - REACT_APP_SUPABASE_URL
-- REACT_APP_SUPABASE_ANON_KEY
+- REACT_APP_SUPABASE_KEY
 
 Client initialization:
 - src/lib/supabaseClient.js uses createClient(url, anonKey) with auth.persistSession=true and PKCE

@@ -41,6 +41,9 @@ export default function Sidebar() {
         <NavLink to="/authoring/courses" className={linkClass} aria-label="Manage Courses">
           Manage Courses
         </NavLink>
+        <NavLink to="/authoring/lessons" className={linkClass} aria-label="Manage Lessons">
+          Manage Lessons
+        </NavLink>
         <NavLink to={process.env.REACT_APP_HEALTHCHECK_PATH || "/health"} className={linkClass} aria-label="System Health">
           System Health
         </NavLink>

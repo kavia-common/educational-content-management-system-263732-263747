@@ -17,12 +17,18 @@ import "./App.css";
 import { DashboardProvider } from "./context/DashboardContext";
 import PathsAuthoringPage from "./pages/authoring/PathsAuthoringPage";
 import CoursesAuthoringPage from "./pages/authoring/CoursesAuthoringPage";
+import LessonsAuthoringPage from "./pages/authoring/LessonsAuthoringPage";
 import { FeatureFlagsProvider } from "./context/FeatureFlagsContext";
 import HealthPage from "./pages/HealthPage";
+import LoginPage from "./pages/LoginPage";
+import OAuthCallbackPage from "./pages/OAuthCallbackPage";
+import { ProtectedRoute, RequireRole } from "./routes/guards";
+import { isSupabaseMode } from "./lib/supabaseClient";
 
 /**
- * In guest mode, all routes are public. Admin/Authoring routes are accessible
- * to the default guest profile to keep demo pages reachable.
+ * Application routes:
+ * - When Supabase mode is enabled, protect main app with ProtectedRoute and use RequireRole for admin routes.
+ * - Otherwise, guest mode is permissive (existing behavior).
  */
 
 // PUBLIC_INTERFACE
@@ -32,25 +38,52 @@ function App() {
     applyCssVariables();
   }, []);
 
+  const supabaseMode = (() => {
+    try {
+      return isSupabaseMode();
+    } catch {
+      return false;
+    }
+  })();
+
+  const maybeProtect = (element) =>
+    supabaseMode ? <ProtectedRoute>{element}</ProtectedRoute> : element;
+
+  const maybeAdmin = (element) =>
+    supabaseMode ? (
+      <ProtectedRoute>
+        <RequireRole roles={["admin", "instructor"]}>{element}</RequireRole>
+      </ProtectedRoute>
+    ) : (
+      element
+    );
+
   return (
     <BrowserRouter>
       <AuthProvider>
         <FeatureFlagsProvider>
           <DashboardProvider>
             <Routes>
+              {/* Public/landing */}
               <Route
                 path="/"
                 element={
                   <AppLayout>
-                    <DashboardPage />
+                    {maybeProtect(<DashboardPage />)}
                   </AppLayout>
                 }
               />
+
+              {/* Auth routes */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+
+              {/* Dashboards */}
               <Route
                 path="/dashboard"
                 element={
                   <AppLayout>
-                    <DashboardPage />
+                    {maybeProtect(<DashboardPage />)}
                   </AppLayout>
                 }
               />
@@ -58,7 +91,7 @@ function App() {
                 path="/employee/dashboard"
                 element={
                   <AppLayout>
-                    <EmployeeDashboardPage />
+                    {maybeProtect(<EmployeeDashboardPage />)}
                   </AppLayout>
                 }
               />
@@ -66,7 +99,7 @@ function App() {
                 path="/admin/dashboard"
                 element={
                   <AppLayout>
-                    <AdminDashboardPage />
+                    {maybeAdmin(<AdminDashboardPage />)}
                   </AppLayout>
                 }
               />
@@ -76,7 +109,7 @@ function App() {
                 path="/paths"
                 element={
                   <AppLayout>
-                    <PathsListPage />
+                    {maybeProtect(<PathsListPage />)}
                   </AppLayout>
                 }
               />
@@ -84,7 +117,7 @@ function App() {
                 path="/paths/:id"
                 element={
                   <AppLayout>
-                    <PathDetailPage />
+                    {maybeProtect(<PathDetailPage />)}
                   </AppLayout>
                 }
               />
@@ -94,26 +127,25 @@ function App() {
                 path="/courses"
                 element={
                   <AppLayout>
-                    <CoursesPage />
+                    {maybeProtect(<CoursesPage />)}
                   </AppLayout>
                 }
               />
-              {/* Player route for course content */}
               <Route
                 path="/courses/:id"
                 element={
                   <AppLayout>
-                    <CoursePlayerPage />
+                    {maybeProtect(<CoursePlayerPage />)}
                   </AppLayout>
                 }
               />
 
-              {/* Authoring */}
+              {/* Authoring (admin/instructor only when protected) */}
               <Route
                 path="/authoring/paths"
                 element={
                   <AppLayout>
-                    <PathsAuthoringPage />
+                    {maybeAdmin(<PathsAuthoringPage />)}
                   </AppLayout>
                 }
               />
@@ -121,7 +153,15 @@ function App() {
                 path="/authoring/courses"
                 element={
                   <AppLayout>
-                    <CoursesAuthoringPage />
+                    {maybeAdmin(<CoursesAuthoringPage />)}
+                  </AppLayout>
+                }
+              />
+              <Route
+                path="/authoring/lessons"
+                element={
+                  <AppLayout>
+                    {maybeAdmin(<LessonsAuthoringPage />)}
                   </AppLayout>
                 }
               />
@@ -131,7 +171,7 @@ function App() {
                 path="/assignments"
                 element={
                   <AppLayout>
-                    <AssignmentsPage />
+                    {maybeProtect(<AssignmentsPage />)}
                   </AppLayout>
                 }
               />
@@ -139,12 +179,14 @@ function App() {
                 path="/grades"
                 element={
                   <AppLayout>
-                    <GradesPage />
+                    {maybeProtect(<GradesPage />)}
                   </AppLayout>
                 }
               />
+
               {/* Health/status page - public, no secrets */}
               <Route path={process.env.REACT_APP_HEALTHCHECK_PATH || "/health"} element={<HealthPage />} />
+
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </DashboardProvider>

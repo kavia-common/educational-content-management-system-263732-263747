@@ -10,7 +10,7 @@ React-based LMS frontend with two supported integration modes:
 2) Direct Supabase browser mode (feature-flagged for simpler setups):
 - Initializes Supabase client in the browser using anon key
 - Uses RLS to limit data access
-- Auth handled by supabase.auth (email/password, magic link)
+- Auth handled by supabase.auth (PKCE)
 - No service role key is ever used client-side
 
 Security notes:
@@ -18,31 +18,41 @@ Security notes:
 - In Supabase mode, the anon key is considered public. Ensure tight RLS policies.
 - In proxy mode, the browser never sees Supabase keys or tokens.
 
-## Current Demo Configuration: Authentication Disabled
+## Authentication (Supabase PKCE Mode)
 
-For this deployment, sign-in is disabled and the app runs in guest/anonymous mode:
-- All pages are publicly reachable without logging in.
-- Route guards are permissive; authoring and admin dashboards are accessible.
-- The TopNav hides login/logout controls and shows a Guest badge.
-- The Login page is removed from routing and any legacy /login hits redirect to /dashboard.
+When `FLAG_SUPABASE_MODE` is enabled via `REACT_APP_FEATURE_FLAGS`, the app initializes a Supabase client with PKCE and session persistence:
 
-Important implications:
-- Any action that depends on authenticated backend/session (or Supabase RLS) may fail with 401/403 if your backend requires auth. In guest mode we do not redirect; UI should continue to function with whatever public data is available.
-- Authoring endpoints typically require elevated permissions. You may need to:
-  - Allow public access in your backend/proxy for demo purposes, or
-  - Re-enable authentication before performing write operations.
+- Client: `src/lib/supabaseClient.js` using:
+  - `createClient(REACT_APP_SUPABASE_URL, REACT_APP_SUPABASE_KEY, { auth: { flowType: "pkce", persistSession: true, redirectTo: window.location.origin + "/oauth/callback" }})`
+- AuthContext (`src/context/AuthContext.js`) loads the current session, subscribes to auth state changes, and fetches the user's role from the `profiles` table (`profiles.id = auth.user.id`).
+- Protected routes: `src/routes/guards.js` provides `ProtectedRoute` and `RequireRole` to gate access.
+- Role-based admin routes: require `profile.role` in `["admin","instructor"]`.
 
-How to re-enable authentication later:
-- Restore PrivateRoute and role checks in src/context/AuthContext.js and src/App.js.
-- Re-add /login and /oauth/callback routes in src/App.js.
-- Switch AuthContext to call backend /auth/me or use Supabase mode (see sections below).
-- Show login/logout controls in TopNav and role-aware links in Sidebar.
+PKCE Redirect URLs:
+- Add the following to your Supabase project's Auth Redirect URLs:
+  - `https://<your-frontend-domain>/oauth/callback`
+  - `http://localhost:3000/oauth/callback` (for local development)
+
+Environment Variables for Supabase mode:
+- REACT_APP_SUPABASE_URL
+- REACT_APP_SUPABASE_KEY
+- REACT_APP_FEATURE_FLAGS must contain `FLAG_SUPABASE_MODE=true`.
+
+Notes:
+- Email magic link is supported via `signInWithOtp` (see `src/lib/supabaseClient.js`).
+- The OAuth provider configuration can also be used; Supabase handles PKCE redirects back to `/oauth/callback`.
+
+## Current Demo Configuration
+
+- Guest mode is still supported when `FLAG_SUPABASE_MODE` is not enabled.
+- In guest mode, route guards are permissive and the app works without sign-in.
+- When `FLAG_SUPABASE_MODE` is enabled, protected routes require a valid session, and admin routes require the correct role.
 
 ## Key Characteristics
 - Routing with react-router-dom (v6)
 - Ocean Professional theme (blue primary, amber secondary)
 - Core pages: /dashboard, /paths, /paths/:id, /courses, /courses/:id, /assignments, /grades
-  - Note: /login is intentionally not used while auth is disabled.
+- Auth pages: /login (email magic link), /oauth/callback (PKCE handler)
 
 ## Environment Variables
 Create a `.env` using `.env.example` as reference:
@@ -57,7 +67,7 @@ Required/general:
 
 Supabase mode (only used when FLAG_SUPABASE_MODE is enabled):
 - REACT_APP_SUPABASE_URL
-- REACT_APP_SUPABASE_ANON_KEY
+- REACT_APP_SUPABASE_KEY
 
 Additional container variables may exist:
 - REACT_APP_API_BASE, REACT_APP_WS_URL, REACT_APP_NODE_ENV, REACT_APP_NEXT_TELEMETRY_DISABLED, REACT_APP_ENABLE_SOURCE_MAPS, REACT_APP_PORT, REACT_APP_TRUST_PROXY
@@ -68,66 +78,35 @@ Additional container variables may exist:
 - `npm run build` - production build
 
 ## Architecture
-- src/lib/supabaseClient.js: client SDK and feature flag check (not used while auth is disabled)
-- src/apiClient.js: backend proxy fetch wrapper (no 401 redirect in guest mode)
-- src/context/AuthContext.js: guest/anonymous mode default user with role "admin" for full demo access
+- src/lib/supabaseClient.js: client SDK and feature flag check
+- src/routes/guards.js: ProtectedRoute and RequireRole
+- src/apiClient.js: backend proxy fetch wrapper
+- src/context/AuthContext.js: Supabase or guest mode session/profile
 - src/services/*: paths/courses/progress switch between Supabase and proxy endpoints
 - src/layouts and components: UI
 - src/theme.js: theme variables applied to :root
 
-## Supabase Browser Mode
-Enable with REACT_APP_FEATURE_FLAGS containing FLAG_SUPABASE_MODE=true (if you re-enable auth).
-
-Auth flow:
-- On load, AuthContext calls supabase.auth.getSession() and subscribes to onAuthStateChange
-- Profile role is fetched from 'profiles' table by user id (expects profiles.id = auth.user.id)
-- Role-based UI gates rely on profile.role (admin, instructor, student)
-
-Tables and RLS assumptions:
+## Database Tables and RLS (assumptions)
 - profiles(id uuid pk, full_name text, role text) with RLS: user can select/update own row
-- learning_paths(id uuid pk, title text, description text, ...): RLS: all authenticated can select; inserts/updates limited to instructors/admins
-- courses(id uuid pk, title text, description text, instructor text, path_id uuid, video_url text, embed_url text): RLS: select for all authenticated; writes limited to instructors/admins
-- enrollments(user_id uuid, course_id uuid, status text, created_at timestamptz): RLS: user can manage own rows
-- user_course_progress(user_id uuid, course_id uuid, progress_percent int, status text, time_spent_seconds int, updated_at timestamptz): RLS: user can manage own rows
+- learning_paths(id uuid pk, title text, description text, thumbnail, created_at)
+- courses(id uuid pk, title text, description text, instructor text, path_id uuid, thumbnail, video_url text, embed_url text, created_at)
+- enrollments(user_id uuid, course_id uuid, status text, created_at timestamptz)
+- user_course_progress(user_id uuid, course_id uuid, progress_percent int, status text, time_spent_seconds int, updated_at timestamptz)
 - course_lessons(id uuid pk default gen_random_uuid(), course_id uuid references courses(id), title text, thumbnail text null, duration int null, sequence int not null)
-  - Unique constraint recommended on (course_id, title) to support idempotent upserts
+  - Unique index on (course_id, title) recommended for idempotent upserts
   - RLS: select for authenticated users; insert/update/delete restricted to instructors/admins
 
-Security considerations:
-- Only anon key in frontend; rely on RLS to scope data
-- Never expose service role key
-- Validate RLS policies to ensure users can only see their own enrollments/progress and public course/path data
+## Seeding Course Lessons (Frontend-only, Feature-flagged)
+See Health page and `src/seeds/lessonsSeed.js`. Enable both flags:
+- `FLAG_SUPABASE_MODE=true`
+- `FLAG_ALLOW_SEED=true`
 
-### Seeding Course Lessons (Frontend-only, Feature-flagged)
-This app ships with a lightweight seeding utility to insert static lesson data into the `course_lessons` table using the Supabase browser SDK.
-
-Prerequisites:
-- Supabase mode enabled: include `FLAG_SUPABASE_MODE=true` in `REACT_APP_FEATURE_FLAGS`
-- Allow seed (admin-only): include `FLAG_ALLOW_SEED=true` in `REACT_APP_FEATURE_FLAGS`
-- Ensure `course_lessons` table exists with RLS and a unique index on `(course_id, title)`
-
-How to run:
-1) Start the app with Supabase flags enabled. Example:
-   REACT_APP_FEATURE_FLAGS='{"FLAG_SUPABASE_MODE":true,"FLAG_ALLOW_SEED":true}'
-2) Navigate to the Health page (`/health` or the configured `REACT_APP_HEALTHCHECK_PATH`).
-3) Click "Seed Course Lessons". A concise success or error message will appear.
-
-Notes:
-- The seeder uses upsert with `onConflict: "course_id,title"` meaning repeated runs are idempotent.
-- Default data is embedded in `src/seeds/lessonsSeed.js`. You can supply your own fixtures by importing and calling `seedLessons(customSets)` in code, or by editing `src/seeds/fixtures/lessons.json` and adapting the importer.
-- No secrets are logged; errors are displayed briefly without sensitive content.
-
-Schema (SQL DDL example):
-See assets/supabase.md for a full SQL snippet including RLS policies and uniqueness constraints.
+Navigate to `/health` and click "Seed Course Lessons". This runs idempotent upserts.
 
 ## Backend Proxy Mode (Summary)
-Same as described previously (see kavia-docs/backend-proxy-contract.md). When auth is re-enabled the app will use:
-- GET /auth/me, /auth/login, /auth/logout
-- /api/... endpoints for data
+Same as described previously (see kavia-docs/backend-proxy-contract.md).
 
 ## Notes
-- While auth is disabled, RLS-dependent actions may fail unless public access is allowed server-side.
-- For production, re-enable authentication and restore route guards.
-
-Player routing:
-- The player lives at `/courses/:id` (CoursePlayerPage). Links from course lists and learning path courses point here for a consistent start/complete experience.
+- In protected mode, unauthorized users are redirected to /login.
+- Admin/authoring pages are gated with `RequireRole(["admin","instructor"])`.
+- RLS-friendly queries are used in Supabase mode, scoping by `auth.uid()` for user data.
