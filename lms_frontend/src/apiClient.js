@@ -17,6 +17,12 @@ function log(level, message, meta) {
 }
 
 // PUBLIC_INTERFACE
+export function getBaseUrl() {
+  /** Returns the configured backend base URL (for diagnostics). */
+  return BASE_URL;
+}
+
+// PUBLIC_INTERFACE
 export async function apiFetch(path, options = {}) {
   /**
    * Fetch wrapper that includes credentials for cookie-based auth and
@@ -48,7 +54,8 @@ export async function apiFetch(path, options = {}) {
     log("warn", "Unauthorized - redirecting to login", { path });
     // Redirect to login page, preserving intended destination
     const destination = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.assign(`/login?next=${destination}`);
+    // Use replace to avoid back navigation loop
+    window.location.replace(`/login?next=${destination}`);
     return response;
   }
 
@@ -59,6 +66,13 @@ export async function apiFetch(path, options = {}) {
 export async function apiJson(path, options = {}) {
   /** Convenience wrapper to parse JSON and throw on non-2xx responses. */
   const res = await apiFetch(path, options);
+  // If a 401 happened apiFetch already redirected; avoid parsing an empty body
+  if (res.status === 401) {
+    const err = new Error("Unauthorized");
+    err.status = 401;
+    err.data = null;
+    throw err;
+  }
   const contentType = res.headers.get("content-type") || "";
   let data = null;
   if (contentType.includes("application/json")) {

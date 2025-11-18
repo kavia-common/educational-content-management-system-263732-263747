@@ -9,13 +9,16 @@ export default function LoginPage() {
    * Default provider is "email" as placeholder.
    */
   const { login } = useAuth();
-  const next = useMemo(() => {
+  const { next, error } = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get("next") || "/dashboard";
+    return {
+      next: params.get("next") || "/dashboard",
+      error: params.get("error"),
+    };
   }, []);
 
   const handleLogin = (provider = "email") => {
-    // Optionally include next in query string; backend can handle state
+    // Backend maintains state/PKCE; we simply kick off provider flow
     login(provider);
   };
 
@@ -24,6 +27,13 @@ export default function LoginPage() {
       <div className="card" style={{ maxWidth: 420, width: "100%" }}>
         <h1 className="page-title">Welcome to OceanLMS</h1>
         <p className="page-subtitle">Sign in to continue</p>
+
+        {error && (
+          <div className="card" style={{ borderColor: "var(--color-error)", marginBottom: 12 }}>
+            Authentication error. Please try again.
+          </div>
+        )}
+
         <div className="vstack" style={{ marginTop: 8 }}>
           <button className="btn btn-primary" onClick={() => handleLogin("email")}>Continue with Email</button>
           <button className="btn btn-secondary" onClick={() => handleLogin("google")}>Continue with Google</button>

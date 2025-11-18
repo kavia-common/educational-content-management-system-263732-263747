@@ -16,11 +16,17 @@ export function AuthProvider({ children }) {
   /**
    * Provides authentication state based on backend cookie session.
    * On mount, it queries GET /auth/me to resolve the current user.
+   * Maintains three states: initializing, authenticated, unauthenticated.
    */
   const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
 
   const refresh = useCallback(async () => {
+    /**
+     * PUBLIC_INTERFACE
+     * Refresh the authenticated user by calling GET /auth/me.
+     * On 200, sets user; on 401 or error, clears user.
+     */
     try {
       const me = await authApi.me();
       setUser(me?.user || me || null);
@@ -32,8 +38,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    // Hydrate current user on first mount
     refresh();
-  }, [refresh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const login = useCallback((provider = "email") => {
     // Redirect browser to backend login URL (will handle OAuth/email)
@@ -42,11 +50,18 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
+    /**
+     * PUBLIC_INTERFACE
+     * Logs out the user via POST /auth/logout and redirects to /login.
+     */
     try {
       await authApi.logout();
+    } catch (_) {
+      // ignore network errors; proceed to clear client state
     } finally {
       setUser(null);
-      window.location.assign("/login");
+      // Use replace to avoid back navigation into an authed route
+      window.location.replace("/login");
     }
   }, []);
 
@@ -68,7 +83,7 @@ export function AuthProvider({ children }) {
 // PUBLIC_INTERFACE
 export function PrivateRoute({ children }) {
   /**
-   * Guards protected routes: shows nothing until initialized,
+   * Guards protected routes: shows a loading state until initialized,
    * redirects to /login if unauthenticated, otherwise renders children.
    */
   const { initializing, isAuthenticated } = useAuth();
@@ -78,7 +93,7 @@ export function PrivateRoute({ children }) {
   }
   if (!isAuthenticated) {
     const next = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.assign(`/login?next=${next}`);
+    window.location.replace(`/login?next=${next}`);
     return null;
   }
   return children;
