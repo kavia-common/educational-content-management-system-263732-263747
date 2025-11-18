@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { getSupabaseEnvInfo } from "../lib/supabaseClient";
 
 /**
  * AuthContext backed by Supabase Auth.
@@ -197,15 +198,7 @@ export function AuthProvider({ children }) {
      * Returns safe environment info for diagnostics (no secrets).
      * Only indicates whether key exists, and shows url.
      */
-    const url = process.env.REACT_APP_SUPABASE_URL || "";
-    const key = process.env.REACT_APP_SUPABASE_KEY || process.env.REACT_APP_SUPABASE_ANON_KEY || "";
-    const maskedKey = key ? `${key.slice(0, 4)}…${key.slice(-4)}` : "";
-    return {
-      supabaseUrl: url,
-      supabaseKeyPresent: Boolean(key),
-      supabaseKeyMasked: maskedKey,
-      frontendUrl: process.env.REACT_APP_FRONTEND_URL || window.location.origin,
-    };
+    return getSupabaseEnvInfo();
   }, []);
 
   const value = useMemo(

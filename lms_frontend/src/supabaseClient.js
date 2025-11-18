@@ -6,20 +6,26 @@ import { createClient } from "@supabase/supabase-js";
  *
  * Env:
  * - REACT_APP_SUPABASE_URL
- * - REACT_APP_SUPABASE_KEY or REACT_APP_SUPABASE_ANON_KEY (prototype only; prefer anon key + RLS)
+ * - REACT_APP_SUPABASE_ANON_KEY (preferred) or REACT_APP_SUPABASE_KEY (alias)
+ * - REACT_APP_FRONTEND_URL (used for default redirect URLs)
  */
 
 // PUBLIC_INTERFACE
 export const supabase = (() => {
   const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || "";
-  const supabaseKey = process.env.REACT_APP_SUPABASE_KEY || process.env.REACT_APP_SUPABASE_ANON_KEY || "";
+  const supabaseKey =
+    process.env.REACT_APP_SUPABASE_ANON_KEY ||
+    process.env.REACT_APP_SUPABASE_KEY ||
+    "";
+
+  const siteUrl = process.env.REACT_APP_FRONTEND_URL || window.location.origin;
 
   const maskedKey = supabaseKey ? `${supabaseKey.slice(0, 4)}…${supabaseKey.slice(-4)}` : "";
 
   if (!supabaseUrl || !supabaseKey) {
     // eslint-disable-next-line no-console
     console.warn(
-      "[supabaseClient] Missing env vars. Set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_KEY (or REACT_APP_SUPABASE_ANON_KEY) in your .env",
+      "[supabaseClient] Missing env vars. Set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY (or REACT_APP_SUPABASE_KEY) in your .env",
       { urlPresent: Boolean(supabaseUrl), keyPresent: Boolean(supabaseKey) }
     );
   } else {
@@ -36,7 +42,11 @@ export const supabase = (() => {
         persistSession: true,
         detectSessionInUrl: true,
         flowType: "pkce",
+        // Set safe defaults used by AuthContext helpers as well.
+        // Routes should exist in the app router.
+        autoRefreshToken: true,
       },
+      // future: global headers, schema, etc.
     });
   } catch (e) {
     // eslint-disable-next-line no-console
