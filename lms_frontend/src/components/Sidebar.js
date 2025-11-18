@@ -22,6 +22,9 @@ export default function Sidebar() {
             Admin Dashboard
           </NavLink>
         )}
+        <NavLink to="/paths" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
+          Learning Paths
+        </NavLink>
         <NavLink to="/courses" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
           Courses
         </NavLink>

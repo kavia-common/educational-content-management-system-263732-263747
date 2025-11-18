@@ -11,6 +11,9 @@ import AssignmentsPage from "./pages/AssignmentsPage";
 import GradesPage from "./pages/GradesPage";
 import EmployeeDashboardPage from "./pages/EmployeeDashboardPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+import PathsListPage from "./pages/PathsListPage";
+import PathDetailPage from "./pages/PathDetailPage";
+import CoursePlayerPage from "./pages/CoursePlayerPage";
 import { applyCssVariables } from "./theme";
 import "./App.css";
 import { useAuth } from "./context/AuthContext";
@@ -89,6 +92,30 @@ function App() {
               </PrivateRoute>
             }
           />
+
+          {/* Learning Paths */}
+          <Route
+            path="/paths"
+            element={
+              <PrivateRoute>
+                <AppLayout>
+                  <PathsListPage />
+                </AppLayout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/paths/:id"
+            element={
+              <PrivateRoute>
+                <AppLayout>
+                  <PathDetailPage />
+                </AppLayout>
+              </PrivateRoute>
+            }
+          />
+
+          {/* Courses */}
           <Route
             path="/courses"
             element={
@@ -99,16 +126,19 @@ function App() {
               </PrivateRoute>
             }
           />
+          {/* Player route for course content (role-agnostic) */}
           <Route
             path="/courses/:id"
             element={
               <PrivateRoute>
                 <AppLayout>
-                  <CourseDetailPage />
+                  <CoursePlayerPage />
                 </AppLayout>
               </PrivateRoute>
             }
           />
+
+          {/* Other sections */}
           <Route
             path="/assignments"
             element={
