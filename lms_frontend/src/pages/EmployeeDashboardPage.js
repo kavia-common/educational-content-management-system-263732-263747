@@ -1,94 +1,48 @@
-import React, { useEffect, useMemo, useState } from "react";
-import "../components/layout.css";
-import { useAuth } from "../context/AuthContext";
-import ProgressBar from "../components/ProgressBar";
-import StatsTiles from "../components/StatsTiles";
-import { progressService } from "../services/progressService";
-import { useDashboard } from "../context/DashboardContext";
+import React from 'react';
+import Card from '../components/ui/Card';
+import Stat from '../components/ui/Stat';
+import { useProgress } from '../hooks/useProgress';
+import MiniBar from '../components/charts/MiniBar';
+import MiniPie from '../components/charts/MiniPie';
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ * EmployeeDashboardPage
+ * Dashboard for learners showing simple progress breakdown.
+ */
 export default function EmployeeDashboardPage() {
-  /** Displays learner dashboard with course progress and summary tiles. */
-  const { user } = useAuth();
-  const { version } = useDashboard();
-  const [progress, setProgress] = useState([]);
-  const [summary, setSummary] = useState(null);
-  const [err, setErr] = useState(null);
+  const { completed, inProgress, notStarted, totalTracked, loading, error } = useProgress();
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const [p, s] = await Promise.all([
-          progressService.getUserProgress().catch(() => []),
-          progressService.getUserSummary().catch(() => null),
-        ]);
-        if (!mounted) return;
-        setProgress(Array.isArray(p) ? p : (p?.items || []));
-        setSummary(s);
-      } catch (e) {
-        if (!mounted) return;
-        setErr(e);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [version]);
-
-  const greetingName = user?.name || user?.email || "Learner";
-  const tiles = useMemo(() => {
-    return [
-      { label: "Enrolled", value: summary?.enrolledCount ?? "—", accent: "primary" },
-      { label: "Completed", value: summary?.completedCount ?? "—", accent: "secondary" },
-      { label: "In Progress", value: summary?.inProgressCount ?? "—", accent: "primary" },
-    ];
-  }, [summary]);
+  const series = [
+    { label: 'Completed', value: completed, color: '#2563EB' },
+    { label: 'In Progress', value: inProgress, color: '#F59E0B' },
+    { label: 'Not Started', value: notStarted, color: '#9CA3AF' },
+  ];
 
   return (
-    <div className="vstack">
-      <h1 className="page-title">Welcome back, {greetingName}</h1>
-      <p className="page-subtitle">Track your learning progress and continue where you left off.</p>
+    <div className="space-y-6">
+      <h1 className="text-xl font-semibold text-gray-800">My Learning</h1>
 
-      {err && (
-        <div className="card" style={{ borderColor: "var(--color-error)" }}>
-          Failed to load your dashboard. Please try again later.
-        </div>
-      )}
-
-      <StatsTiles items={tiles} columns={3} />
-
-      <div className="vstack" style={{ marginTop: 12 }}>
-        <h3 className="page-title" style={{ fontSize: 18, marginBottom: 0 }}>
-          Your Courses
-        </h3>
-        <p className="page-subtitle" style={{ marginTop: 4 }}>Continue learning from your enrolled courses</p>
-
-        <div className="grid">
-          {progress.map((c) => (
-            <div key={c.id || `${c.courseId}-${c.sequence}`} className="card">
-              <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-                <strong>{c.title || "Untitled course"}</strong>
-                <span style={{ color: "var(--color-muted)" }}>
-                  {typeof c.timeSpentSeconds === "number"
-                    ? `${Math.round(c.timeSpentSeconds / 60)} min`
-                    : "—"}
-                </span>
-              </div>
-              <ProgressBar value={c.progressPercent ?? 0} label={`Progress for ${c.title || "course"}`} />
-              <div className="hstack" style={{ justifyContent: "space-between", marginTop: 8 }}>
-                <span className="page-subtitle" style={{ margin: 0 }}>
-                  Progress
-                </span>
-                <strong style={{ color: "var(--color-primary)" }}>
-                  {Math.round(c.progressPercent ?? 0)}%
-                </strong>
-              </div>
-            </div>
-          ))}
-          {progress.length === 0 && !err && <div className="card">No course progress to show yet.</div>}
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Stat label="Completed" value={completed} accent="blue" />
+        <Stat label="In Progress" value={inProgress} accent="amber" />
+        <Stat label="Tracked Lessons" value={totalTracked} />
       </div>
+
+      <Card title="Progress Overview">
+        {loading ? (
+          <div className="text-gray-500">Loading...</div>
+        ) : error ? (
+          <div className="text-red-600">Error loading progress</div>
+        ) : totalTracked === 0 ? (
+          <div className="text-gray-600">No progress yet. Start a course to see your stats.</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <MiniBar data={series} />
+            <MiniPie data={series} />
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

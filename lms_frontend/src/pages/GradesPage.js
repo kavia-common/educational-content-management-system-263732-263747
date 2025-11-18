@@ -1,19 +1,21 @@
-import React, { useEffect, useState } from "react";
-import { apiJson } from "../apiClient";
-import "../components/layout.css";
+import React, { useEffect, useState } from 'react';
+import { apiJson } from '../apiClient';
 
-// PUBLIC_INTERFACE
-export default function GradesPage() {
-  /** Display grades per course/assignment. */
-  const [grades, setGrades] = useState([]);
+/**
+ * PUBLIC_INTERFACE
+ * GradesPage
+ * Minimal placeholder showing a list of grades (proxy endpoint).
+ */
+const GradesPage = () => {
+  const [items, setItems] = useState([]);
   const [err, setErr] = useState(null);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const data = await apiJson("/grades");
-        if (mounted) setGrades(Array.isArray(data) ? data : (data?.items || []));
+        const data = await apiJson('/grades');
+        if (mounted) setItems(Array.isArray(data) ? data : (data?.items || []));
       } catch (e) {
         if (e?.status !== 401) setErr(e);
       }
@@ -22,24 +24,15 @@ export default function GradesPage() {
   }, []);
 
   return (
-    <div className="vstack">
-      <h1 className="page-title">Grades</h1>
-      <p className="page-subtitle">Your performance overview</p>
-
-      {err && <div className="card" style={{ borderColor: "var(--color-error)" }}>Failed to load grades.</div>}
-
-      <div className="grid">
-        {grades.map((g) => (
-          <div key={g.id} className="card">
-            <div className="hstack" style={{ justifyContent: "space-between" }}>
-              <strong>{g.courseTitle || "Course"}</strong>
-              <span style={{ color: "var(--color-primary)" }}>{g.overall || g.score || "—"}</span>
-            </div>
-            <p className="page-subtitle">Updated {g.updatedAt ? new Date(g.updatedAt).toLocaleString() : "—"}</p>
-          </div>
-        ))}
-        {grades.length === 0 && !err && <div className="card">No grades to show.</div>}
-      </div>
+    <div>
+      <h2>Grades</h2>
+      {err && <div className="text-red-600">Failed to load grades.</div>}
+      <ul>
+        {items.map(i => <li key={i.id}>{i.courseTitle || i.title} - {i.score || 'N/A'}</li>)}
+      </ul>
+      {items.length === 0 && !err && <div className="text-gray-600">No grades to show.</div>}
     </div>
   );
-}
+};
+
+export default GradesPage;

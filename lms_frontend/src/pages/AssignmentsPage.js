@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { apiJson } from "../apiClient";
-import "../components/layout.css";
+import React, { useEffect, useState } from 'react';
+import { apiJson } from '../apiClient';
 
-// PUBLIC_INTERFACE
-export default function AssignmentsPage() {
-  /** Shows assignments across courses. */
+/**
+ * PUBLIC_INTERFACE
+ * AssignmentsPage
+ * Minimal placeholder page showing assignments list (proxy endpoint).
+ */
+const AssignmentsPage = () => {
   const [items, setItems] = useState([]);
   const [err, setErr] = useState(null);
 
@@ -12,7 +14,7 @@ export default function AssignmentsPage() {
     let mounted = true;
     (async () => {
       try {
-        const data = await apiJson("/assignments");
+        const data = await apiJson('/assignments');
         if (mounted) setItems(Array.isArray(data) ? data : (data?.items || []));
       } catch (e) {
         if (e?.status !== 401) setErr(e);
@@ -22,27 +24,15 @@ export default function AssignmentsPage() {
   }, []);
 
   return (
-    <div className="vstack">
-      <h1 className="page-title">Assignments</h1>
-      <p className="page-subtitle">Track upcoming and past assignments</p>
-
-      {err && <div className="card" style={{ borderColor: "var(--color-error)" }}>Failed to load assignments.</div>}
-
-      <div className="grid">
-        {items.map((a) => (
-          <div key={a.id} className="card">
-            <div className="hstack" style={{ justifyContent: "space-between" }}>
-              <strong>{a.title || "Untitled assignment"}</strong>
-              <span style={{ color: "var(--color-muted)" }}>{a.dueDate ? new Date(a.dueDate).toLocaleDateString() : "—"}</span>
-            </div>
-            <p className="page-subtitle">{a.courseTitle || "Course"}</p>
-            <div className="hstack">
-              <button className="btn btn-primary" aria-label={`View assignment ${a.title || a.id || ""}`}>View</button>
-            </div>
-          </div>
-        ))}
-        {items.length === 0 && !err && <div className="card">No assignments found.</div>}
-      </div>
+    <div>
+      <h2>Assignments</h2>
+      {err && <div className="text-red-600">Failed to load assignments.</div>}
+      <ul>
+        {items.map(i => <li key={i.id}>{i.title}</li>)}
+      </ul>
+      {items.length === 0 && !err && <div className="text-gray-600">No assignments found.</div>}
     </div>
   );
-}
+};
+
+export default AssignmentsPage;

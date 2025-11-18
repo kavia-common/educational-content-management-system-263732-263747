@@ -1,149 +1,81 @@
-import React, { useEffect, useMemo, useState } from "react";
-import "../components/layout.css";
-import { useAuth } from "../context/AuthContext";
-import StatsTiles from "../components/StatsTiles";
-import MiniBar from "../components/charts/MiniBar";
-import MiniPie from "../components/charts/MiniPie";
-import { progressService } from "../services/progressService";
-import { useDashboard } from "../context/DashboardContext";
-import { useFeatureFlags } from "../context/FeatureFlagsContext";
+import React, { useEffect, useState } from 'react';
+import Stat from '../components/ui/Stat';
+import Card from '../components/ui/Card';
+import { getSupabase, isSupabaseMode } from '../lib/supabaseClient';
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ * AdminDashboardPage
+ * Overview dashboard with entity counts and recent completions.
+ */
 export default function AdminDashboardPage() {
-  /**
-   * Admin dashboard showing aggregate platform metrics.
-   * Note: Route must be protected by admin check in App.js
-   */
-  const { user } = useAuth();
-  const { version } = useDashboard();
-  const { isEnabled } = useFeatureFlags();
-  const [summary, setSummary] = useState(null);
-  const [completions, setCompletions] = useState([]);
-  const [distribution, setDistribution] = useState([]);
-  const [err, setErr] = useState(null);
+  const [counts, setCounts] = useState({ learners: 0, paths: 0, courses: 0, lessons: 0 });
+  const [recent, setRecent] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    try {
+      if (isSupabaseMode()) {
+        const supabase = getSupabase();
+        const [{ count: paths }, { count: courses }, { count: lessons }, { count: learners }] = await Promise.all([
+          supabase.from('learning_paths').select('id', { count: 'exact', head: true }),
+          supabase.from('courses').select('id', { count: 'exact', head: true }),
+          supabase.from('lessons').select('id', { count: 'exact', head: true }),
+          supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        ]);
+
+        const { data: recentProgress } = await supabase
+          .from('course_progress')
+          .select('id, user_id, lesson_id, is_completed, completed_at')
+          .order('completed_at', { ascending: false })
+          .limit(10);
+
+        setCounts({
+          learners: learners || 0,
+          paths: paths || 0,
+          courses: courses || 0,
+          lessons: lessons || 0,
+        });
+        setRecent(recentProgress || []);
+      } else {
+        setCounts({ learners: 0, paths: 0, courses: 0, lessons: 0 });
+        setRecent([]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const [s, c, d] = await Promise.all([
-          progressService.getAdminSummary().catch(() => null),
-          progressService.getCourseCompletions().catch(() => []),
-          progressService.getProgressDistribution().catch(() => []),
-        ]);
-        if (!mounted) return;
-        setSummary(s);
-        setCompletions(Array.isArray(c) ? c : []);
-        setDistribution(Array.isArray(d) ? d : []);
-      } catch (e) {
-        if (!mounted) return;
-        setErr(e);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [version]);
-
-  const tiles = useMemo(() => {
-    return [
-      { label: "Total Users", value: summary?.totalUsers ?? "—", accent: "primary" },
-      { label: "Active Users", value: summary?.activeUsers ?? "—", accent: "secondary" },
-      { label: "Total Courses", value: summary?.totalCourses ?? "—", accent: "primary" },
-      { label: "Completions Today", value: summary?.completionsToday ?? "—", accent: "secondary" },
-    ];
-  }, [summary]);
-
-  const barData = (completions || []).map((c) => ({
-    label: (c.title || "").slice(0, 8),
-    value: Number(c.completedCount) || 0,
-  }));
-
-  const pieData = (distribution || []).map((d) => ({
-    name: d.name,
-    value: Number(d.value) || 0,
-  }));
+    load();
+  }, []);
 
   return (
-    <div className="vstack">
-      <h1 className="page-title">Admin Dashboard</h1>
-      <p className="page-subtitle">
-        Platform insights and activity overview{user?.name ? ` for ${user.name}` : ""}.
-      </p>
+    <div className="space-y-6">
+      <h1 className="text-xl font-semibold text-gray-800">Admin Overview</h1>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Stat label="Learners" value={counts.learners} />
+        <Stat label="Paths" value={counts.paths} />
+        <Stat label="Courses" value={counts.courses} />
+        <Stat label="Lessons" value={counts.lessons} />
+      </div>
 
-      {err && (
-        <div className="card" style={{ borderColor: "var(--color-error)" }}>
-          Failed to load admin data. Please try again later.
-        </div>
-      )}
-
-      <StatsTiles items={tiles} columns={4} />
-
-      <div className="grid cols-3" style={{ marginTop: 12 }}>
-        { (isEnabled("charts") ?? true) && (
-          <>
-            <div className="card" style={{ gridColumn: "span 2" }}>
-              <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-                <strong>Course Completions</strong>
-                <span className="page-subtitle" style={{ margin: 0 }}>
-                  Top courses by completions
-                </span>
+      <Card title="Recent Progress">
+        {loading ? (
+          <div className="text-gray-500">Loading...</div>
+        ) : recent.length === 0 ? (
+          <div className="text-gray-600">No progress yet.</div>
+        ) : (
+          <div className="divide-y">
+            {recent.map(r => (
+              <div key={r.id} className="py-2 text-sm text-gray-700">
+                User {String(r.user_id || '').slice(0, 8)} • Lesson {String(r.lesson_id || '').slice(0, 8)} • {r.is_completed ? 'Completed' : 'Updated'} • {r.completed_at ? new Date(r.completed_at).toLocaleString() : 'N/A'}
               </div>
-              {barData.length > 0 ? (
-                <MiniBar data={barData} height={160} />
-              ) : (
-                <div className="page-subtitle">No completion data.</div>
-              )}
-            </div>
-            <div className="card">
-              <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-                <strong>Progress Distribution</strong>
-                <span className="page-subtitle" style={{ margin: 0 }}>
-                  Learner progress buckets
-                </span>
-              </div>
-              {pieData.length > 0 ? (
-                <div className="hstack" style={{ gap: 12 }}>
-                  <MiniPie data={pieData} size={160} />
-                  <div className="vstack" style={{ gap: 8 }}>
-                    {pieData.map((d, i) => (
-                      <div key={i} className="hstack" style={{ alignItems: "center", gap: 8 }}>
-                        <span
-                          aria-hidden
-                          style={{
-                            display: "inline-block",
-                            width: 12,
-                            height: 12,
-                            borderRadius: 2,
-                            background:
-                              ["var(--color-primary)", "var(--color-secondary)", "#10B981", "#8B5CF6", "#EF4444"][
-                                i % 5
-                              ],
-                            boxShadow: "0 0 0 2px rgba(0,0,0,0.05)",
-                          }}
-                        />
-                        <span className="page-subtitle" style={{ margin: 0 }}>
-                          {d.name}: <strong style={{ color: "var(--color-text)" }}>{d.value}</strong>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="page-subtitle">No distribution data.</div>
-              )}
-            </div>
-          </>
-        )}
-        { !(isEnabled("charts") ?? true) && (
-          <div className="card">
-            <strong>Charts disabled</strong>
-            <p className="page-subtitle" style={{ marginTop: 8 }}>
-              Charts are turned off by feature flag.
-            </p>
+            ))}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

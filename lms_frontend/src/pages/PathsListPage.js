@@ -1,52 +1,44 @@
-import React, { useEffect, useState } from "react";
-import "../components/layout.css";
-import PathCard from "../components/PathCard";
-import { pathsService } from "../services/pathsService";
+import React, { useEffect, useState } from 'react';
+import { listPaths } from '../services/pathsService';
+import PathCard from '../components/PathCard';
+import Button from '../components/ui/Button';
 
 /**
- * Lists Learning Paths available to the current user.
- * Fetches from GET ${REACT_APP_BACKEND_URL}/api/learning-paths via apiClient.
+ * PUBLIC_INTERFACE
+ * PathsListPage
+ * Lists all learning paths.
  */
-// PUBLIC_INTERFACE
 export default function PathsListPage() {
   const [paths, setPaths] = useState([]);
-  const [err, setErr] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  async function load() {
+    setLoading(true);
+    try {
+      const data = await listPaths();
+      setPaths(data);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const data = await pathsService.list();
-        if (!mounted) return;
-        const items = Array.isArray(data) ? data : data?.items || [];
-        setPaths(items);
-      } catch (e) {
-        if (!mounted) return;
-        setErr(e);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
+    load();
   }, []);
 
+  if (loading) return <div className="text-gray-500">Loading...</div>;
+  if (!paths.length) return (
+    <div className="text-gray-600">
+      No learning paths available yet.
+      <div className="mt-2"><Button onClick={load} variant="ghost">Retry</Button></div>
+    </div>
+  );
+
   return (
-    <div className="vstack">
-      <h1 className="page-title">Learning Paths</h1>
-      <p className="page-subtitle">Curated sequences of courses to master topics</p>
-
-      {err && <div className="card" style={{ borderColor: "var(--color-error)" }}>Failed to load learning paths.</div>}
-      {loading && <div className="card">Loading...</div>}
-
-      <div className="grid cols-3" style={{ marginTop: 8 }}>
-        {paths.map((p) => (
-          <PathCard key={p.id} path={p} />
-        ))}
-        {paths.length === 0 && !loading && !err && <div className="card">No learning paths available.</div>}
-      </div>
+    <div className="grid gap-4 md:grid-cols-3">
+      {paths.map((path) => (
+        <PathCard key={path.id} path={path} />
+      ))}
     </div>
   );
 }

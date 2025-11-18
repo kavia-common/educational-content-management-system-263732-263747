@@ -1,115 +1,56 @@
-import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import "../components/layout.css";
-import { coursesService } from "../services/coursesService";
-import { useDashboard } from "../context/DashboardContext";
+import React, { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { getCourseById } from '../services/coursesService';
+import Card from '../components/ui/Card';
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ * CourseDetailPage
+ * Shows a course and its lessons list.
+ */
 export default function CourseDetailPage() {
-  /** Detailed view for a single course. */
   const { id } = useParams();
-  const { markEnrolled, markStarted } = useDashboard();
   const [course, setCourse] = useState(null);
-  const [err, setErr] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [working, setWorking] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const data = await coursesService.get(id);
-        if (mounted) setCourse(data);
-      } catch (e) {
-        setErr(e);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
+    getCourseById(id).then((c) => {
+      setCourse(c);
+      setLoading(false);
+    });
   }, [id]);
 
-  const handleEnroll = async () => {
-    if (working) return;
-    setWorking(true);
-    const prev = course;
-    setCourse((c) => ({ ...(c || {}), enrolled: true }));
-    try {
-      await coursesService.enroll(id);
-      // notify dashboards
-      markEnrolled();
-    } catch (e) {
-      setCourse(prev);
-      setErr(e);
-    } finally {
-      setWorking(false);
-    }
-  };
-
-  const handleStart = async () => {
-    if (working) return;
-    setWorking(true);
-    const prev = course;
-    setCourse((c) => ({ ...(c || {}), status: "in_progress", progressPercent: Math.max(5, Number(c?.progressPercent || 0)) }));
-    try {
-      await coursesService.start(id);
-      // notify dashboards
-      markStarted();
-    } catch (e) {
-      setCourse(prev);
-      setErr(e);
-    } finally {
-      setWorking(false);
-    }
-  };
+  if (loading) return <div className="text-gray-500">Loading...</div>;
+  if (!course) return <div className="text-gray-600">Course not found.</div>;
 
   return (
-    <div className="vstack">
-      <div className="hstack" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
-        <div>
-          <h1 className="page-title">{course?.title || "Course"}</h1>
-          <p className="page-subtitle">{course?.description || "Course details and modules"}</p>
-        </div>
-        <Link to="/courses" className="btn btn-secondary">All Courses</Link>
-      </div>
-
-      {err && <div className="card" style={{ borderColor: "var(--color-error)" }}>Failed to load course.</div>}
-      {loading && <div className="card">Loading...</div>}
-      {!loading && (
-      <div className="card">
-        <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-          <span><strong>Instructor:</strong> {course?.instructor || "TBD"}</span>
-          <div className="hstack" style={{ gap: 8 }}>
-            {!course?.enrolled && (
-              <button className="btn btn-secondary" onClick={handleEnroll} disabled={working} aria-label="Enroll in course">
-                {working ? "Enrolling..." : "Enroll"}
-              </button>
-            )}
-            <Link className="btn btn-primary" to={`/courses/${id}`} aria-label="Open course player">Open Player</Link>
-            <button className="btn btn-secondary" onClick={handleStart} disabled={working} aria-label="Start course">
-              {working ? "Starting..." : "Start"}
-            </button>
+    <div className="space-y-4">
+      <Card>
+        <div className="flex items-start gap-4">
+          {course.thumbnail_url && <img src={course.thumbnail_url} alt="" className="w-24 h-24 rounded object-cover" />}
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800">{course.title}</h2>
+            <p className="text-gray-600 mt-1">{course.description}</p>
           </div>
         </div>
-      </div>
-      )}
+      </Card>
 
-      {!loading && (
-        <div className="vstack">
-          <h3 className="page-title" style={{ fontSize: 18 }}>Modules</h3>
-          <div className="grid">
-            {(course?.modules || []).map((m) => (
-              <div key={m.id} className="card">
-                <strong>{m.title}</strong>
-                <p className="page-subtitle">{m.summary}</p>
-              </div>
+      <Card title="Lessons">
+        {(course.lessons || []).length === 0 ? (
+          <div className="text-gray-600">No lessons yet.</div>
+        ) : (
+          <ul className="space-y-2">
+            {course.lessons.map((lesson) => (
+              <li key={lesson.id} className="flex items-center justify-between">
+                <Link to={`/lessons/${lesson.id}`} className="text-blue-600 hover:underline">
+                  {lesson.position}. {lesson.title}
+                </Link>
+                <Link to={`/lessons/${lesson.id}`} className="text-sm text-gray-500 hover:text-gray-700">Open</Link>
+              </li>
             ))}
-            {(!Array.isArray(course?.modules) || course.modules.length === 0) && <div className="card">No modules yet.</div>}
-          </div>
-        </div>
-      )}
+          </ul>
+        )}
+      </Card>
     </div>
   );
 }

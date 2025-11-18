@@ -1,18 +1,21 @@
 import React from "react";
-import TopNav from "../components/TopNav";
 import Sidebar from "../components/Sidebar";
+import TopNav from "../components/TopNav";
 import "../components/layout.css";
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ * AppLayout
+ * Wraps pages in top nav and sidebar.
+ */
 export default function AppLayout({ children }) {
-  /** Default application layout with top nav and sidebar. */
   return (
-    <>
+    <div className="app-layout">
       <TopNav />
-      <div className="layout-shell">
+      <div className="content">
         <Sidebar />
-        <main className="main" role="main" tabIndex={-1}>{children}</main>
+        <main className="main">{children}</main>
       </div>
-    </>
+    </div>
   );
 }

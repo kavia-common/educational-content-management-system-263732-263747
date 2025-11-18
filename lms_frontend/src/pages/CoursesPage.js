@@ -1,96 +1,55 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import "../components/layout.css";
-import { coursesService } from "../services/coursesService";
+import React, { useEffect, useState } from 'react';
+import CourseCard from '../components/CourseCard';
+import { listCourses, enroll } from '../services/coursesService';
 
 /**
- * Browse list of courses with ability to enroll (optimistic).
+ * PUBLIC_INTERFACE
+ * CoursesPage
+ * Lists all available courses and allows enrollment.
  */
-// PUBLIC_INTERFACE
-export default function CoursesPage() {
-  /** Browse list of courses. */
+const CoursesPage = () => {
   const [courses, setCourses] = useState([]);
-  const [err, setErr] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [workingId, setWorkingId] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const data = await listCourses();
+      setCourses(Array.isArray(data) ? data : []);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const data = await coursesService.list().catch(async () => {
-          // fallback: legacy endpoint without /api
-          return [];
-        });
-        if (mounted) setCourses(Array.isArray(data) ? data : data?.items || []);
-      } catch (e) {
-        setErr(e);
-      } finally {
-        setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
+    load();
   }, []);
 
-  const handleEnroll = async (courseId) => {
-    if (!courseId || workingId) return;
-    setWorkingId(courseId);
+  async function onEnroll(id) {
+    if (!id || workingId) return;
+    setWorkingId(id);
     const prev = courses;
-    // Optimistically set enrolled=true
-    setCourses((list) =>
-      (list || []).map((c) => (c.id === courseId ? { ...c, enrolled: true } : c))
-    );
+    setCourses((list) => list.map(c => c.id === id ? { ...c, enrolled: true } : c));
     try {
-      await coursesService.enroll(courseId);
-    } catch (e) {
-      // rollback
+      await enroll(id);
+    } catch {
       setCourses(prev);
-      setErr(e);
     } finally {
       setWorkingId(null);
     }
-  };
+  }
+
+  if (loading) return <div className="text-gray-500">Loading...</div>;
+  if (!courses.length) return <div className="text-gray-600">No courses available.</div>;
 
   return (
-    <div className="vstack">
-      <h1 className="page-title">Courses</h1>
-      <p className="page-subtitle">Browse and continue your courses</p>
-
-      {err && (
-        <div className="card" style={{ borderColor: "var(--color-error)" }}>
-          Failed to load courses.
-        </div>
-      )}
-      {loading && <div className="card">Loading...</div>}
-
-      <div className="grid cols-3">
-        {courses.map((c) => (
-          <div key={c.id} className="card">
-            <h3 style={{ margin: "4px 0 6px" }}>{c.title || "Untitled course"}</h3>
-            <p className="page-subtitle" style={{ margin: 0 }}>
-              {c.description || "No description"}
-            </p>
-            <div className="hstack" style={{ marginTop: 12, gap: 8 }}>
-              <Link className="btn btn-primary" to={`/courses/${c.id}`} aria-label={`${c.enrolled ? "Open" : "View"} ${c.title || "course"}`}>
-                {c.enrolled ? "Open" : "View"}
-              </Link>
-              {!c.enrolled && (
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => handleEnroll(c.id)}
-                  disabled={workingId === c.id}
-                  aria-label={`Enroll in ${c.title || "course"}`}
-                >
-                  {workingId === c.id ? "Enrolling..." : "Enroll"}
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-        {courses.length === 0 && !err && <div className="card">No courses found.</div>}
-      </div>
+    <div className="grid gap-4 md:grid-cols-3">
+      {courses.map((course) => (
+        <CourseCard key={course.id} course={course} onEnroll={onEnroll} enrolling={workingId === course.id} />
+      ))}
     </div>
   );
-}
+};
+
+export default CoursesPage;

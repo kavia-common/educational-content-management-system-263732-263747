@@ -1,166 +1,83 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
-import "../components/layout.css";
-import { coursesService } from "../services/coursesService";
-import ProgressBar from "../components/ProgressBar";
-import { useDashboard } from "../context/DashboardContext";
+import React, { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import { getLessonById } from '../services/lessonsService';
+import { useProgress } from '../hooks/useProgress';
 
 /**
- * Plays a course's primary content (video or embedded resource)
- * and allows user to start and mark complete with optimistic updates.
- *
- * Endpoints:
- * - GET /api/courses/:id (fallback: /courses/:id)
- * - POST /api/courses/:id/start
- * - POST /api/courses/:id/complete
+ * PUBLIC_INTERFACE
+ * CoursePlayerPage
+ * Lesson player page with video playback and mark complete.
  */
-// PUBLIC_INTERFACE
 export default function CoursePlayerPage() {
   const { id } = useParams();
-  const { markStarted, markCompleted } = useDashboard();
-  const [course, setCourse] = useState(null);
-  const [err, setErr] = useState(null);
+  const [lesson, setLesson] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [working, setWorking] = useState(false);
+  const { markComplete } = useProgress();
+  const [completing, setCompleting] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const data = await coursesService.get(id);
-        if (!mounted) return;
-        setCourse(data);
-      } catch (e) {
-        if (!mounted) return;
-        setErr(e);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
+    getLessonById(id).then((l) => {
+      setLesson(l);
+      setLoading(false);
+    }).catch((e) => {
+      setError(e);
+      setLoading(false);
+    });
   }, [id]);
 
-  const pct = Math.max(0, Math.min(100, Number(course?.progressPercent) || 0));
-  const isComplete = useMemo(() => pct >= 100 || course?.status === "completed", [pct, course?.status]);
-
-  const handleStart = async () => {
-    if (working) return;
-    setWorking(true);
-    const prev = course;
-    // Optimistic: set at least some progress
-    setCourse((c) => ({ ...(c || {}), status: "in_progress", progressPercent: Math.max(5, Number(c?.progressPercent || 0)) }));
+  async function complete() {
+    setCompleting(true);
     try {
-      await coursesService.start(id);
-      // notify dashboards
-      markStarted();
+      await markComplete(lesson.id);
+      alert('Marked complete!');
     } catch (e) {
-      // rollback on error
-      setCourse(prev);
-      setErr(e);
+      alert(`Unable to mark complete: ${e.message}`);
     } finally {
-      setWorking(false);
+      setCompleting(false);
     }
-  };
+  }
 
-  const handleComplete = async () => {
-    if (working || isComplete) return;
-    setWorking(true);
-    const prev = course;
-    // Optimistic: mark as 100% and completed
-    setCourse((c) => ({ ...(c || {}), status: "completed", progressPercent: 100 }));
-    try {
-      await coursesService.complete(id);
-      // notify dashboards
-      markCompleted();
-    } catch (e) {
-      // rollback on error
-      setCourse(prev);
-      setErr(e);
-    } finally {
-      setWorking(false);
-    }
-  };
-
-  const renderPlayer = () => {
-    const video = course?.video_url || course?.videoUrl;
-    const embed = course?.embed_url || course?.embedHtml;
-    if (video) {
-      return (
-        <video
-          key={video}
-          controls
-          style={{ width: "100%", borderRadius: 12, border: "1px solid var(--color-border)", background: "black" }}
-          src={video}
-        />
-      );
-    }
-    if (embed) {
-      // If backend returns an embeddable URL, render iframe
-      return (
-        <iframe
-          key={embed}
-          title={course?.title || "Course"}
-          src={embed}
-          style={{ width: "100%", height: 420, border: "1px solid var(--color-border)", borderRadius: 12 }}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowFullScreen
-        />
-      );
-    }
-    return <div className="card">No playable media available for this course.</div>;
-  };
+  if (loading) return <div className="text-gray-500">Loading...</div>;
+  if (!lesson) return <div className="text-gray-600">Lesson not found.</div>;
 
   return (
-    <div className="vstack">
-      <h1 className="page-title">{course?.title || "Course"}</h1>
-      <p className="page-subtitle">{course?.description || "Course player"}</p>
-
-      {err && <div className="card" style={{ borderColor: "var(--color-error)" }}>A problem occurred. Please try again.</div>}
-      {loading && <div className="card">Loading...</div>}
-
-      {!loading && (
-        <>
-          <div className="card">{renderPlayer()}</div>
-
-          <div className="card" style={{ marginTop: 12 }}>
-            <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-              <strong>Progress</strong>
-              <span style={{ color: "var(--color-primary)" }}>{Math.round(pct)}%</span>
-            </div>
-            <ProgressBar value={pct} label="Course progress" />
-            <div className="hstack" style={{ marginTop: 12, gap: 8 }}>
-              <button className="btn btn-primary" onClick={handleStart} disabled={working} aria-label="Start course">
-                {working ? "Starting..." : "Start"}
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={handleComplete}
-                disabled={working || isComplete}
-                aria-disabled={working || isComplete}
-                aria-label={isComplete ? "Course completed" : "Mark course complete"}
-              >
-                {isComplete ? "Completed" : working ? "Marking..." : "Mark Complete"}
-              </button>
-            </div>
+    <div className="space-y-4">
+      <Card>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800">{lesson.title}</h2>
+            <p className="text-gray-600 mt-1">{lesson.description}</p>
           </div>
+          <div className="flex gap-2">
+            {lesson.course_id && <Link to={`/courses/${lesson.course_id}`} className="text-blue-600 hover:underline text-sm">Back to Course</Link>}
+          </div>
+        </div>
+      </Card>
 
-          {Array.isArray(course?.modules) && course.modules.length > 0 && (
-            <div className="vstack" style={{ marginTop: 12 }}>
-              <h3 className="page-title" style={{ fontSize: 18 }}>Modules</h3>
-              <div className="grid">
-                {(course.modules || []).map((m) => (
-                  <div key={m.id} className="card">
-                    <strong>{m.title}</strong>
-                    <p className="page-subtitle">{m.summary}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </>
-      )}
+      <Card title="Lesson Video">
+        {lesson.video_url ? (
+          <div className="aspect-video w-full bg-black rounded overflow-hidden">
+            <iframe
+              src={lesson.video_url}
+              title={lesson.title}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        ) : (
+          <div className="text-gray-600">No video provided.</div>
+        )}
+      </Card>
+
+      <div className="flex justify-end">
+        <Button onClick={complete} disabled={completing} variant="primary">
+          {completing ? 'Marking...' : 'Mark Complete'}
+        </Button>
+      </div>
     </div>
   );
 }

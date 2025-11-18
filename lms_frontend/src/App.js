@@ -135,6 +135,14 @@ function App() {
                 path="/courses/:id"
                 element={
                   <AppLayout>
+                    {maybeProtect(<CourseDetailPage />)}
+                  </AppLayout>
+                }
+              />
+              <Route
+                path="/lessons/:id"
+                element={
+                  <AppLayout>
                     {maybeProtect(<CoursePlayerPage />)}
                   </AppLayout>
                 }

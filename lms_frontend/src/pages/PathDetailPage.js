@@ -1,65 +1,49 @@
-import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import "../components/layout.css";
-import { pathsService } from "../services/pathsService";
-import CourseCard from "../components/CourseCard";
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { getPathById } from '../services/pathsService';
+import CourseCard from '../components/CourseCard';
+import Card from '../components/ui/Card';
 
 /**
- * Shows a learning path details and its courses.
- *
- * Endpoints:
- * - GET /api/learning-paths/:id
- * - GET /api/learning-paths/:id/courses
+ * PUBLIC_INTERFACE
+ * PathDetailPage
+ * Shows a learning path and its courses.
  */
-// PUBLIC_INTERFACE
 export default function PathDetailPage() {
   const { id } = useParams();
   const [path, setPath] = useState(null);
-  const [courses, setCourses] = useState([]);
-  const [err, setErr] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const [p, c] = await Promise.all([
-          pathsService.get(id),
-          pathsService.getCourses(id),
-        ]);
-        if (!mounted) return;
-        setPath(p);
-        setCourses(Array.isArray(c) ? c : c?.items || []);
-      } catch (e) {
-        if (!mounted) return;
-        setErr(e);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
+    getPathById(id).then((data) => {
+      setPath(data);
+      setLoading(false);
+    });
   }, [id]);
 
+  if (loading) return <div className="text-gray-500">Loading...</div>;
+  if (!path) return <div className="text-gray-600">Path not found.</div>;
+
   return (
-    <div className="vstack">
-      <div className="hstack" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
-        <div>
-          <h1 className="page-title">{path?.title || "Learning Path"}</h1>
-          <p className="page-subtitle">{path?.description || "Courses in this path"}</p>
+    <div className="space-y-4">
+      <Card>
+        <div className="flex items-start gap-4">
+          {path.thumbnail_url && <img src={path.thumbnail_url} alt="" className="w-24 h-24 rounded object-cover" />}
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800">{path.title}</h2>
+            <p className="text-gray-600 mt-1">{path.description}</p>
+          </div>
         </div>
-        <Link to="/paths" className="btn btn-secondary">All Paths</Link>
-      </div>
+      </Card>
 
-      {err && <div className="card" style={{ borderColor: "var(--color-error)" }}>Failed to load path.</div>}
-      {loading && <div className="card">Loading...</div>}
-
-      <div className="grid cols-3" style={{ marginTop: 8 }}>
-        {courses.map((course) => (
-          <CourseCard key={course.id} course={course} ctaLabel={course?.enrolled ? "Open Course" : "Start"} />
-        ))}
-        {courses.length === 0 && !loading && !err && <div className="card">No courses in this path.</div>}
+      <div className="grid gap-4 md:grid-cols-3 mt-2">
+        {(path.courses || []).length === 0 ? (
+          <div className="text-gray-600">No courses in this path yet.</div>
+        ) : (
+          path.courses.map((course) => (
+            <CourseCard key={course.id} course={course} />
+          ))
+        )}
       </div>
     </div>
   );
