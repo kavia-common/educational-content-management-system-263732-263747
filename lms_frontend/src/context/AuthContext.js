@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { getSupabase, getCurrentSession, isSupabaseMode, signOut } from "../lib/supabaseClient";
 
 /**
@@ -57,6 +57,15 @@ export function AuthProvider({ children }) {
   const [initializing, setInitializing] = useState(true);
   const [flags] = useState(getFlags());
 
+  // Memoize mode once per mount to avoid changing value identity thrash
+  const supabaseEnabled = useMemo(() => {
+    try {
+      return isSupabaseMode();
+    } catch {
+      return false;
+    }
+  }, []);
+
   const loadSupabaseProfile = useCallback(async (uid, email) => {
     try {
       const supabase = getSupabase();
@@ -71,11 +80,14 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // Keep a single subscription instance across renders
+  const subRef = useRef(null);
+
   useEffect(() => {
     let mounted = true;
 
     async function init() {
-      if (!isSupabaseMode()) {
+      if (!supabaseEnabled) {
         setUser(defaultGuest);
         setInitializing(false);
         return;
@@ -86,10 +98,23 @@ export function AuthProvider({ children }) {
         if (!sessionData?.session?.user) {
           // not signed in
           setUser(null);
-          setInitializing(false);
-          // Subscribe for future sign-in events
+        } else {
+          // build profile
+          const profile = await loadSupabaseProfile(sessionData.session.user.id, sessionData.session.user.email);
+          if (!mounted) return;
+          setUser(profile);
+        }
+      } catch (_) {
+        if (mounted) setUser(null);
+      } finally {
+        if (mounted) setInitializing(false);
+      }
+
+      // Subscribe to auth changes once
+      if (!subRef.current) {
+        try {
           const supabase = getSupabase();
-          supabase.auth.onAuthStateChange(async (event, session) => {
+          const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
             if (!mounted) return;
             if (session?.user) {
               const profile = await loadSupabaseProfile(session.user.id, session.user.email);
@@ -98,42 +123,32 @@ export function AuthProvider({ children }) {
               setUser(null);
             }
           });
-          return;
+          subRef.current = listener?.subscription || null;
+        } catch {
+          // ignore
         }
-        // build profile
-        const profile = await loadSupabaseProfile(sessionData.session.user.id, sessionData.session.user.email);
-        if (!mounted) return;
-        setUser(profile);
-      } catch (_) {
-        // keep user null in Supabase mode to force login
-        if (mounted) setUser(null);
-      } finally {
-        if (mounted) setInitializing(false);
       }
-
-      // Subscribe to auth changes
-      const supabase = getSupabase();
-      supabase.auth.onAuthStateChange(async (_event, session) => {
-        if (!mounted) return;
-        if (session?.user) {
-          const profile = await loadSupabaseProfile(session.user.id, session.user.email);
-          setUser(profile);
-        } else {
-          setUser(null);
-        }
-      });
     }
 
     init();
 
     return () => {
       mounted = false;
+      if (subRef.current) {
+        try {
+          subRef.current.unsubscribe();
+        } catch {
+          // ignore
+        } finally {
+          subRef.current = null;
+        }
+      }
     };
-  }, [defaultGuest, loadSupabaseProfile]);
+  }, [defaultGuest, loadSupabaseProfile, supabaseEnabled]);
 
   const refresh = useCallback(async () => {
     /** PUBLIC_INTERFACE: Refresh current session/profile. */
-    if (!isSupabaseMode()) {
+    if (!supabaseEnabled) {
       setUser(defaultGuest);
       return;
     }
@@ -153,23 +168,21 @@ export function AuthProvider({ children }) {
     } else {
       setUser(null);
     }
-  }, [defaultGuest]);
+  }, [defaultGuest, supabaseEnabled]);
 
   const login = useCallback(() => {
     /** PUBLIC_INTERFACE: Begin login via redirect to Supabase hosted provider page if applicable; otherwise noop in guest mode. */
-    if (!isSupabaseMode()) {
+    if (!supabaseEnabled) {
       // guest mode: no-op
       return;
     }
     const supabase = getSupabase();
-    // Default: open a sign-in page or let the LoginPage handle initiating email auth.
-    // Here we do nothing; UI should navigate to /login where a form will start magic link or provider flow.
     return supabase;
-  }, []);
+  }, [supabaseEnabled]);
 
   const logout = useCallback(async () => {
     /** PUBLIC_INTERFACE: Logout in Supabase mode or reset to guest. */
-    if (isSupabaseMode()) {
+    if (supabaseEnabled) {
       try {
         await signOut();
       } catch (_) {}
@@ -177,19 +190,21 @@ export function AuthProvider({ children }) {
       return;
     }
     setUser(defaultGuest);
-  }, [defaultGuest]);
+  }, [defaultGuest, supabaseEnabled]);
 
   const value = useMemo(
     () => ({
       user,
+      // expose a derived profile-like shape for convenience in guards/pages
+      profile: user?.profile || null,
       initializing,
       refresh,
       login,
       logout,
-      isAuthenticated: isSupabaseMode() ? !!user : true,
+      isAuthenticated: supabaseEnabled ? !!user : true,
       flags,
     }),
-    [user, initializing, refresh, login, logout, flags]
+    [user, initializing, refresh, login, logout, flags, supabaseEnabled]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

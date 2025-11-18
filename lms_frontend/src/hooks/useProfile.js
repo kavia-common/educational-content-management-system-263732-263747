@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { useEffect, useState, useCallback } from 'react';
+import { getSupabase } from '../lib/supabaseClient';
 
 /**
  * PUBLIC_INTERFACE
@@ -14,43 +14,68 @@ export function useProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  async function fetchProfile() {
+  const fetchProfile = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const { data: sessionData } = await supabase.auth.getUser();
-    const userId = sessionData?.user?.id;
-    if (!userId) {
-      setProfile(null);
-      setRole('guest');
-      setLoading(false);
-      return;
-    }
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, email, full_name, role, avatar_url')
-      .eq('id', userId)
-      .single();
+    try {
+      const supabase = getSupabase();
+      const { data: sessionData } = await supabase.auth.getUser();
+      const userId = sessionData?.user?.id;
+      if (!userId) {
+        setProfile(null);
+        setRole('guest');
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, role, avatar_url')
+        .eq('id', userId)
+        .maybeSingle();
 
-    if (error) {
-      setError(error);
+      if (error) {
+        setError(error);
+        setProfile(null);
+        setRole('learner');
+      } else {
+        setProfile(data || null);
+        setRole((data && data.role) ? data.role : 'learner');
+      }
+    } catch (e) {
+      setError(e);
       setProfile(null);
       setRole('learner');
-    } else {
-      setProfile(data);
-      setRole(data?.role || 'learner');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }
+  }, []);
 
   useEffect(() => {
-    fetchProfile();
-    const { data: sub } = supabase.auth.onAuthStateChange((_event) => {
-      fetchProfile();
-    });
+    let sub = null;
+    let mounted = true;
+
+    (async () => {
+      await fetchProfile();
+      try {
+        const supabase = getSupabase();
+        const { data: listener } = supabase.auth.onAuthStateChange((_event) => {
+          if (mounted) fetchProfile();
+        });
+        sub = listener?.subscription || null;
+      } catch {
+        // ignore
+      }
+    })();
+
     return () => {
-      sub.subscription.unsubscribe();
+      mounted = false;
+      try {
+        sub?.unsubscribe();
+      } catch {
+        // ignore
+      }
     };
-  }, []);
+  }, [fetchProfile]);
 
   return { profile, role, loading, error, refetch: fetchProfile };
 }

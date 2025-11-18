@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { getSupabase } from '../lib/supabaseClient';
 
 /**
  * PUBLIC_INTERFACE
@@ -14,22 +14,34 @@ export function useSession() {
 
   useEffect(() => {
     let isMounted = true;
+    let sub = null;
 
-    // Fetch current session on mount
-    supabase.auth.getSession().then(({ data }) => {
-      if (!isMounted) return;
-      setSession(data.session ?? null);
-      setLoading(false);
-    });
+    async function setup() {
+      try {
+        const supabase = getSupabase();
+        const { data } = await supabase.auth.getSession();
+        if (isMounted) {
+          setSession(data.session ?? null);
+          setLoading(false);
+        }
+        const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+          if (isMounted) setSession(newSession ?? null);
+        });
+        sub = listener?.subscription || null;
+      } catch {
+        if (isMounted) setLoading(false);
+      }
+    }
 
-    // Subscribe to auth state changes
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession ?? null);
-    });
+    setup();
 
     return () => {
       isMounted = false;
-      listener.subscription.unsubscribe();
+      try {
+        sub?.unsubscribe();
+      } catch {
+        // ignore
+      }
     };
   }, []);
 

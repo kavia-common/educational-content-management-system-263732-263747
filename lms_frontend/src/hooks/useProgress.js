@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { getSupabase } from '../lib/supabaseClient';
 
 /**
  * PUBLIC_INTERFACE
@@ -15,26 +15,33 @@ export function useProgress() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const { data: userRes } = await supabase.auth.getUser();
-    const userId = userRes?.user?.id;
-    if (!userId) {
+    try {
+      const supabase = getSupabase();
+      const { data: userRes } = await supabase.auth.getUser();
+      const userId = userRes?.user?.id;
+      if (!userId) {
+        setRows([]);
+        setLoading(false);
+        return;
+      }
+
+      // RLS-friendly: filtered by current user
+      const { data, error } = await supabase
+        .from('course_progress')
+        .select('id, user_id, lesson_id, is_completed, completed_at');
+
+      if (error) {
+        setError(error);
+        setRows([]);
+      } else {
+        setRows(data || []);
+      }
+    } catch (e) {
+      setError(e);
       setRows([]);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // RLS-friendly: filtered by current user
-    const { data, error } = await supabase
-      .from('course_progress')
-      .select('id, user_id, lesson_id, is_completed, completed_at');
-
-    if (error) {
-      setError(error);
-      setRows([]);
-    } else {
-      setRows(data || []);
-    }
-    setLoading(false);
   }, []);
 
   const aggregates = useMemo(() => {
@@ -45,6 +52,7 @@ export function useProgress() {
   }, [rows]);
 
   const markComplete = useCallback(async (lessonId) => {
+    const supabase = getSupabase();
     const { data: userRes } = await supabase.auth.getUser();
     const userId = userRes?.user?.id;
     if (!userId) throw new Error('Not authenticated');
