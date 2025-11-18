@@ -50,5 +50,7 @@ export default function OAuthCallbackPage() {
     proceed();
   }, []);
 
+  // TEMP: This page is effectively a no-op during auth-disabled preview.
+  // TODO: When restoring auth, ensure Supabase URL fragment parsing is verified here.
   return <div style={{ padding: 24 }}>{message}</div>;
 }

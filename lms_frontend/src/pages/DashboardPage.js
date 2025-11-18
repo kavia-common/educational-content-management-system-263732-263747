@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext';
  */
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { profile, initializing } = useAuth();
+  const { profile, initializing } = useAuth(); // OK for preview mode; profile may be from guest or null
   const navigatedRef = useRef(false);
 
   useEffect(() => {

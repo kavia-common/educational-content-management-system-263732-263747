@@ -20,8 +20,8 @@ import CoursesAuthoringPage from "./pages/authoring/CoursesAuthoringPage";
 import LessonsAuthoringPage from "./pages/authoring/LessonsAuthoringPage";
 import { FeatureFlagsProvider } from "./context/FeatureFlagsContext";
 import HealthPage from "./pages/HealthPage";
-import LoginPage from "./pages/LoginPage";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage";
+// Temporarily import relaxed guards that don't redirect to /login
 import { ProtectedRoute, RequireRole } from "./routes/guards";
 import { isSupabaseMode } from "./lib/supabaseClient";
 
@@ -78,7 +78,11 @@ function App() {
               />
 
               {/* Auth routes */}
-              <Route path="/login" element={<LoginPage />} />
+              {/*
+                TEMP DISABLE LOGIN ROUTE
+                TODO: Restore when auth issue is resolved
+                <Route path="/login" element={<LoginPage />} />
+              */}
               <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
 
               {/* Dashboards */}

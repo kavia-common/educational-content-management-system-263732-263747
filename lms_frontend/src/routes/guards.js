@@ -1,12 +1,12 @@
 import React from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 /**
  * PUBLIC_INTERFACE
  * ProtectedRoute
- * Guards a route to require authentication.
- * Adds defensive checks to avoid redirect loops (e.g., when already on /login or /oauth/callback).
+ * TEMPORARY: Do not redirect to /login; render children with a read-only banner if unauthenticated.
+ * TODO: Restore redirect to /login when auth loop issue is fixed.
  */
 export function ProtectedRoute({ children }) {
   const { isAuthenticated, initializing } = useAuth();
@@ -14,17 +14,6 @@ export function ProtectedRoute({ children }) {
 
   const path = location.pathname || "";
   const search = location.search || "";
-  const isAuthRelatedPath = path.startsWith("/login") || path.startsWith("/oauth/callback");
-
-  // Diagnostic tracing
-  // eslint-disable-next-line no-console
-  console.debug("[ProtectedRoute]", {
-    path,
-    search,
-    isAuthenticated,
-    initializing,
-    isAuthRelatedPath,
-  });
 
   // While auth state is initializing, avoid bouncing routes. Render children or a minimal placeholder.
   if (initializing) {
@@ -32,27 +21,30 @@ export function ProtectedRoute({ children }) {
   }
 
   if (!isAuthenticated) {
-    if (isAuthRelatedPath) {
-      // Already on an auth page; render children instead of redirecting to prevent recursion.
-      // eslint-disable-next-line no-console
-      console.debug("[ProtectedRoute] unauthenticated but on auth path, rendering children");
-      return children;
-    }
-    const next = encodeURIComponent(path + search);
-    // eslint-disable-next-line no-console
-    console.debug("[ProtectedRoute] redirecting to /login with next:", next);
-    return <Navigate to={`/login?next=${next}`} replace />;
+    // TEMP: Bypass redirect. Show a subtle message and allow viewing.
+    return (
+      <div>
+        <div style={{
+          padding: 8,
+          background: "#FFFBEB",
+          borderBottom: "1px solid #FDE68A",
+          color: "#92400E",
+          fontSize: 12
+        }}>
+          Read-only preview: You are not signed in. Some actions may be disabled. {/* TODO: remove banner when auth is restored */}
+        </div>
+        {children}
+      </div>
+    );
   }
-
-  // eslint-disable-next-line no-console
-  console.debug("[ProtectedRoute] authenticated, rendering children");
   return children;
 }
 
 /**
  * PUBLIC_INTERFACE
  * RequireRole
- * Guards a route to require a specific role among the provided roles.
+ * TEMPORARY: If role requirement is not met, render an access-limited message instead of redirecting.
+ * TODO: Restore redirect behavior when auth loop issue is fixed.
  */
 export function RequireRole({ roles = [], children }) {
   const { user, profile, initializing } = useAuth();
@@ -60,24 +52,26 @@ export function RequireRole({ roles = [], children }) {
   const location = useLocation();
   const path = location.pathname || "";
 
-  // Diagnostic tracing
-  // eslint-disable-next-line no-console
-  console.debug("[RequireRole]", { roles, currentRole, initializing, path });
-
-  // Do not redirect while initializing to avoid thrash
+  // Do not block while initializing
   if (initializing) {
     return <div style={{ padding: 8, fontSize: 12 }}>Loading role…</div>;
   }
 
   if (roles.length > 0 && !roles.includes(currentRole)) {
-    // Avoid redirect loop if already navigating to dashboard redirector
-    if (window.location.pathname !== "/dashboard") {
-      // eslint-disable-next-line no-console
-      console.debug("[RequireRole] role mismatch, redirecting to /dashboard from", path);
-      return <Navigate to="/dashboard" replace />;
-    }
-    // eslint-disable-next-line no-console
-    console.debug("[RequireRole] already on /dashboard, rendering children");
+    return (
+      <div style={{ padding: 16 }}>
+        <div style={{
+          padding: 12,
+          border: "1px solid #E5E7EB",
+          borderRadius: 8,
+          background: "#F9FAFB",
+          color: "#374151",
+          fontSize: 14
+        }}>
+          Access limited: This area requires one of the following roles: {roles.join(", ")}. {/* TODO: restore redirect to /dashboard */}
+        </div>
+      </div>
+    );
   }
   return children;
 }

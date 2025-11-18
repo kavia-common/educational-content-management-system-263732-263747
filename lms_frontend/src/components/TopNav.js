@@ -7,6 +7,8 @@ import "./layout.css";
  * PUBLIC_INTERFACE
  * TopNav
  * Displays brand, primary links, and auth actions.
+ * TEMP: Hide Sign In while auth is disabled; show Logout only when authenticated.
+ * TODO: Restore Sign In when login route is re-enabled.
  */
 export default function TopNav() {
   const { user, profile, logout, isAuthenticated } = useAuth();
@@ -31,7 +33,8 @@ export default function TopNav() {
             <button onClick={logout} className="btn">Logout</button>
           </div>
         ) : (
-          <Link to="/login" className="btn">Login</Link>
+          // TEMP: Hide login while disabled
+          <span className="text-sm text-gray-500" style={{ opacity: 0.7 }}>Preview mode</span>
         )}
       </div>
     </header>
