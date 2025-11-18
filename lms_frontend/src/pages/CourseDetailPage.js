@@ -2,13 +2,16 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import "../components/layout.css";
 import { coursesService } from "../services/coursesService";
+import { useDashboard } from "../context/DashboardContext";
 
 // PUBLIC_INTERFACE
 export default function CourseDetailPage() {
   /** Detailed view for a single course. */
   const { id } = useParams();
+  const { markEnrolled, markStarted } = useDashboard();
   const [course, setCourse] = useState(null);
   const [err, setErr] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
 
   useEffect(() => {
@@ -19,6 +22,8 @@ export default function CourseDetailPage() {
         if (mounted) setCourse(data);
       } catch (e) {
         setErr(e);
+      } finally {
+        if (mounted) setLoading(false);
       }
     })();
     return () => {
@@ -33,6 +38,8 @@ export default function CourseDetailPage() {
     setCourse((c) => ({ ...(c || {}), enrolled: true }));
     try {
       await coursesService.enroll(id);
+      // notify dashboards
+      markEnrolled();
     } catch (e) {
       setCourse(prev);
       setErr(e);
@@ -48,6 +55,8 @@ export default function CourseDetailPage() {
     setCourse((c) => ({ ...(c || {}), status: "in_progress", progressPercent: Math.max(5, Number(c?.progressPercent || 0)) }));
     try {
       await coursesService.start(id);
+      // notify dashboards
+      markStarted();
     } catch (e) {
       setCourse(prev);
       setErr(e);
@@ -67,7 +76,8 @@ export default function CourseDetailPage() {
       </div>
 
       {err && <div className="card" style={{ borderColor: "var(--color-error)" }}>Failed to load course.</div>}
-
+      {loading && <div className="card">Loading...</div>}
+      {!loading && (
       <div className="card">
         <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 8 }}>
           <span><strong>Instructor:</strong> {course?.instructor || "TBD"}</span>
@@ -84,19 +94,22 @@ export default function CourseDetailPage() {
           </div>
         </div>
       </div>
+      )}
 
-      <div className="vstack">
-        <h3 className="page-title" style={{ fontSize: 18 }}>Modules</h3>
-        <div className="grid">
-          {(course?.modules || []).map((m) => (
-            <div key={m.id} className="card">
-              <strong>{m.title}</strong>
-              <p className="page-subtitle">{m.summary}</p>
-            </div>
-          ))}
-          {(!course?.modules || course.modules.length === 0) && <div className="card">No modules yet.</div>}
+      {!loading && (
+        <div className="vstack">
+          <h3 className="page-title" style={{ fontSize: 18 }}>Modules</h3>
+          <div className="grid">
+            {(course?.modules || []).map((m) => (
+              <div key={m.id} className="card">
+                <strong>{m.title}</strong>
+                <p className="page-subtitle">{m.summary}</p>
+              </div>
+            ))}
+            {(!Array.isArray(course?.modules) || course.modules.length === 0) && <div className="card">No modules yet.</div>}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

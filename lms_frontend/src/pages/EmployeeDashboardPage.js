@@ -4,11 +4,13 @@ import { useAuth } from "../context/AuthContext";
 import ProgressBar from "../components/ProgressBar";
 import StatsTiles from "../components/StatsTiles";
 import { progressService } from "../services/progressService";
+import { useDashboard } from "../context/DashboardContext";
 
 // PUBLIC_INTERFACE
 export default function EmployeeDashboardPage() {
   /** Displays learner dashboard with course progress and summary tiles. */
   const { user } = useAuth();
+  const { version } = useDashboard();
   const [progress, setProgress] = useState([]);
   const [summary, setSummary] = useState(null);
   const [err, setErr] = useState(null);
@@ -32,7 +34,7 @@ export default function EmployeeDashboardPage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [version]);
 
   const greetingName = user?.name || user?.email || "Learner";
   const tiles = useMemo(() => {

@@ -5,6 +5,7 @@ import StatsTiles from "../components/StatsTiles";
 import MiniBar from "../components/charts/MiniBar";
 import MiniPie from "../components/charts/MiniPie";
 import { progressService } from "../services/progressService";
+import { useDashboard } from "../context/DashboardContext";
 
 // PUBLIC_INTERFACE
 export default function AdminDashboardPage() {
@@ -13,6 +14,7 @@ export default function AdminDashboardPage() {
    * Note: Route must be protected by admin check in App.js
    */
   const { user } = useAuth();
+  const { version } = useDashboard();
   const [summary, setSummary] = useState(null);
   const [completions, setCompletions] = useState([]);
   const [distribution, setDistribution] = useState([]);
@@ -39,7 +41,7 @@ export default function AdminDashboardPage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [version]);
 
   const tiles = useMemo(() => {
     return [

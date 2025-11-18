@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import "../components/layout.css";
 import { coursesService } from "../services/coursesService";
 import ProgressBar from "../components/ProgressBar";
+import { useDashboard } from "../context/DashboardContext";
 
 /**
  * Plays a course's primary content (video or embedded resource)
@@ -16,6 +17,7 @@ import ProgressBar from "../components/ProgressBar";
 // PUBLIC_INTERFACE
 export default function CoursePlayerPage() {
   const { id } = useParams();
+  const { markStarted, markCompleted } = useDashboard();
   const [course, setCourse] = useState(null);
   const [err, setErr] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,6 +53,8 @@ export default function CoursePlayerPage() {
     setCourse((c) => ({ ...(c || {}), status: "in_progress", progressPercent: Math.max(5, Number(c?.progressPercent || 0)) }));
     try {
       await coursesService.start(id);
+      // notify dashboards
+      markStarted();
     } catch (e) {
       // rollback on error
       setCourse(prev);
@@ -68,6 +72,8 @@ export default function CoursePlayerPage() {
     setCourse((c) => ({ ...(c || {}), status: "completed", progressPercent: 100 }));
     try {
       await coursesService.complete(id);
+      // notify dashboards
+      markCompleted();
     } catch (e) {
       // rollback on error
       setCourse(prev);

@@ -17,6 +17,7 @@ import CoursePlayerPage from "./pages/CoursePlayerPage";
 import { applyCssVariables } from "./theme";
 import "./App.css";
 import { useAuth } from "./context/AuthContext";
+import { DashboardProvider } from "./context/DashboardContext";
 
 // Admin guard component
 function AdminRoute({ children }) {
@@ -46,6 +47,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <DashboardProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
@@ -161,6 +163,7 @@ function App() {
           />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
+        </DashboardProvider>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -11,6 +11,7 @@ export default function CoursesPage() {
   /** Browse list of courses. */
   const [courses, setCourses] = useState([]);
   const [err, setErr] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [workingId, setWorkingId] = useState(null);
 
   useEffect(() => {
@@ -24,6 +25,8 @@ export default function CoursesPage() {
         if (mounted) setCourses(Array.isArray(data) ? data : data?.items || []);
       } catch (e) {
         setErr(e);
+      } finally {
+        setLoading(false);
       }
     })();
     return () => {
@@ -60,6 +63,7 @@ export default function CoursesPage() {
           Failed to load courses.
         </div>
       )}
+      {loading && <div className="card">Loading...</div>}
 
       <div className="grid cols-3">
         {courses.map((c) => (
