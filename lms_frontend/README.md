@@ -58,13 +58,41 @@ Public routes:
    - If email confirmations are enabled, verification links must include /signin as a valid redirect.
    - Ensure Email auth is enabled in your Supabase project Authentication settings.
 
-3) Start:
+3) Supabase database setup:
+   - Run SQL from assets/supabase.md to create tables:
+     profiles, learning_paths, courses, modules, enrollments, progress, course_lessons
+   - Enable RLS on all tables and create policies tied to auth.uid() and profiles.role
+   - Insert a profiles row for your user or enable the trigger to auto-create on signup
+   - Optional: set your profile role to 'admin' to access authoring pages
+
+4) Start:
    npm start
 
-4) Open:
+5) Open:
    - "/signin" to sign in or "/signup" to create an account
    - "/dashboard" once authenticated
    - "/paths", "/courses", "/account" and others as needed
+   - "/health" for environment diagnostics and lesson seed helper
+
+### Auth Provider Setup
+
+- Enable Email/Password and optional OAuth (Google, GitHub, Microsoft)
+- Redirect URLs required:
+  - http://localhost:3000/oauth/callback
+  - http://localhost:3000/signin
+  - Add production equivalents
+
+### Troubleshooting
+
+- Empty data or 401:
+  - Confirm you are signed in and RLS policies allow SELECT for authenticated users
+  - Verify profiles row exists for your user id with appropriate role
+- Cannot insert enrollments/progress:
+  - Ensure payload includes user_id=auth.uid() and RLS has with check (user_id = auth.uid())
+- OAuth/magic link redirect issues:
+  - Check Redirect URLs in Supabase and REACT_APP_FRONTEND_URL in .env
+- Admin-only pages blocked:
+  - Set role='admin' in your profiles row
 
 ## Environment Variables
 
