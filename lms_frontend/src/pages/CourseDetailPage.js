@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getCourseById } from '../services/coursesService';
 import Card from '../components/ui/Card';
+import { isSupabaseMode } from '../lib/supabaseClient';
 
 /**
  * PUBLIC_INTERFACE
@@ -14,10 +15,14 @@ export default function CourseDetailPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getCourseById(id).then((c) => {
-      setCourse(c);
+    if (!isSupabaseMode()) {
+      setCourse(null);
       setLoading(false);
-    });
+      return;
+    }
+    getCourseById(id)
+      .then((c) => setCourse(c))
+      .finally(() => setLoading(false));
   }, [id]);
 
   if (loading) return <div className="text-gray-500">Loading...</div>;

@@ -1,22 +1,27 @@
 import { apiFetch, apiJson } from "../apiClient";
+import { isSupabaseMode } from "../lib/supabaseClient";
 
 /**
  * Authoring service for instructors/admins.
- * Uses backend proxy endpoints with credentials: include via apiClient.
- * Endpoints:
- *  - Learning Paths: POST/PUT/DELETE /api/learning-paths, /api/learning-paths/:id
- *  - Courses: POST/PUT/DELETE /api/courses, /api/courses/:id
+ * In Supabase mode, these operations should be performed via Supabase policies and admin UI.
+ * To avoid network errors to a non-existent backend, we short-circuit when Supabase mode is enabled.
  */
 export const authoringService = {
   // PUBLIC_INTERFACE
   async listPaths() {
     /** List all learning paths (authoring view may include drafts). */
+    if (isSupabaseMode()) return []; // handled by client-side views via supabase services
     return apiJson("/api/learning-paths", { method: "GET" });
   },
 
   // PUBLIC_INTERFACE
   async createPath(payload) {
     /** Create a learning path via POST /api/learning-paths */
+    if (isSupabaseMode()) {
+      const err = new Error("Authoring via REST is disabled in Supabase mode.");
+      err.status = 400;
+      throw err;
+    }
     const res = await apiFetch("/api/learning-paths", {
       method: "POST",
       body: JSON.stringify(payload || {}),
@@ -35,6 +40,11 @@ export const authoringService = {
   // PUBLIC_INTERFACE
   async updatePath(id, payload) {
     /** Update a learning path via PUT /api/learning-paths/:id */
+    if (isSupabaseMode()) {
+      const err = new Error("Authoring via REST is disabled in Supabase mode.");
+      err.status = 400;
+      throw err;
+    }
     if (!id) {
       const err = new Error("Path id required");
       err.status = 400;
@@ -58,6 +68,11 @@ export const authoringService = {
   // PUBLIC_INTERFACE
   async deletePath(id) {
     /** Delete a learning path via DELETE /api/learning-paths/:id */
+    if (isSupabaseMode()) {
+      const err = new Error("Authoring via REST is disabled in Supabase mode.");
+      err.status = 400;
+      throw err;
+    }
     if (!id) {
       const err = new Error("Path id required");
       err.status = 400;
@@ -78,12 +93,18 @@ export const authoringService = {
   // PUBLIC_INTERFACE
   async listCourses() {
     /** List all courses (authoring view may include drafts). */
+    if (isSupabaseMode()) return [];
     return apiJson("/api/courses", { method: "GET" });
   },
 
   // PUBLIC_INTERFACE
   async createCourse(payload) {
     /** Create a course via POST /api/courses */
+    if (isSupabaseMode()) {
+      const err = new Error("Authoring via REST is disabled in Supabase mode.");
+      err.status = 400;
+      throw err;
+    }
     const res = await apiFetch("/api/courses", {
       method: "POST",
       body: JSON.stringify(payload || {}),
@@ -102,6 +123,11 @@ export const authoringService = {
   // PUBLIC_INTERFACE
   async updateCourse(id, payload) {
     /** Update a course via PUT /api/courses/:id */
+    if (isSupabaseMode()) {
+      const err = new Error("Authoring via REST is disabled in Supabase mode.");
+      err.status = 400;
+      throw err;
+    }
     if (!id) {
       const err = new Error("Course id required");
       err.status = 400;
@@ -125,6 +151,11 @@ export const authoringService = {
   // PUBLIC_INTERFACE
   async deleteCourse(id) {
     /** Delete a course via DELETE /api/courses/:id */
+    if (isSupabaseMode()) {
+      const err = new Error("Authoring via REST is disabled in Supabase mode.");
+      err.status = 400;
+      throw err;
+    }
     if (!id) {
       const err = new Error("Course id required");
       err.status = 400;

@@ -1,5 +1,4 @@
 import { getSupabase, isSupabaseMode } from "../lib/supabaseClient";
-import { apiJson } from "../apiClient";
 
 /**
  * PUBLIC_INTERFACE
@@ -7,7 +6,9 @@ import { apiJson } from "../apiClient";
  * Public list of learning paths.
  */
 export async function listPaths() {
-  if (isSupabaseMode()) {
+  // When Supabase mode is disabled or misconfigured, return empty list to avoid Failed to fetch
+  if (!isSupabaseMode()) return [];
+  try {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("learning_paths")
@@ -15,8 +16,12 @@ export async function listPaths() {
       .order("created_at", { ascending: false });
     if (error) throw error;
     return data || [];
+  } catch (e) {
+    // Defensive: surface empty dataset to UI instead of throwing network errors
+    // eslint-disable-next-line no-console
+    console.warn("listPaths fallback to empty due to error:", e?.message || e);
+    return [];
   }
-  return apiJson("/api/learning-paths", { method: "GET" });
 }
 
 /**
@@ -25,7 +30,8 @@ export async function listPaths() {
  * Fetch a learning path by id and include its courses.
  */
 export async function getPathById(id) {
-  if (isSupabaseMode()) {
+  if (!isSupabaseMode()) return null;
+  try {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("learning_paths")
@@ -42,12 +48,11 @@ export async function getPathById(id) {
     if (cErr) throw cErr;
 
     return { ...data, courses: courses || [] };
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("getPathById returning null due to error:", e?.message || e);
+    return null;
   }
-  const [p, c] = await Promise.all([
-    apiJson(`/api/learning-paths/${encodeURIComponent(id)}`, { method: "GET" }),
-    apiJson(`/api/learning-paths/${encodeURIComponent(id)}/courses`, { method: "GET" }),
-  ]);
-  return { ...(p || {}), courses: Array.isArray(c) ? c : c?.items || [] };
 }
 
 /**

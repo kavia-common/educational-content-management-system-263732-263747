@@ -1,5 +1,4 @@
 import { getSupabase, isSupabaseMode } from "../lib/supabaseClient";
-import { apiFetch, apiJson } from "../apiClient";
 
 /**
  * PUBLIC_INTERFACE
@@ -7,7 +6,8 @@ import { apiFetch, apiJson } from "../apiClient";
  * List all courses available.
  */
 export async function listCourses() {
-  if (isSupabaseMode()) {
+  if (!isSupabaseMode()) return [];
+  try {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("courses")
@@ -15,8 +15,11 @@ export async function listCourses() {
       .order("created_at", { ascending: false });
     if (error) throw error;
     return data || [];
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("listCourses fallback to empty due to error:", e?.message || e);
+    return [];
   }
-  return apiJson("/api/courses", { method: "GET" });
 }
 
 /**
@@ -25,7 +28,8 @@ export async function listCourses() {
  * Fetch a single course and its lessons separately for RLS compatibility.
  */
 export async function getCourseById(id) {
-  if (isSupabaseMode()) {
+  if (!isSupabaseMode()) return null;
+  try {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("courses")
@@ -42,10 +46,12 @@ export async function getCourseById(id) {
 
     if (lErr) throw lErr;
 
-    // Maintain compatibility shape with other pages
     return { ...data, lessons: lessons || [], modules: lessons || [] };
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("getCourseById returning null due to error:", e?.message || e);
+    return null;
   }
-  return apiJson(`/api/courses/${encodeURIComponent(id)}`, { method: "GET" });
 }
 
 /**
@@ -75,26 +81,22 @@ export async function deleteCourse(id) {
 /**
  * PUBLIC_INTERFACE
  * enroll
- * Enroll current user in course (Supabase mode) or via proxy.
+ * Enroll current user in course.
  */
 export async function enroll(id) {
-  if (isSupabaseMode()) {
-    const supabase = getSupabase();
-    const { data: sessionData } = await supabase.auth.getUser();
-    const uid = sessionData?.user?.id;
-    if (!uid) {
-      const err = new Error("Not authenticated");
-      err.status = 401;
-      throw err;
-    }
-    const { error } = await supabase
-      .from("enrollments")
-      .upsert({ user_id: uid, course_id: id, status: "enrolled" }, { onConflict: "user_id,course_id" });
-    if (error) throw error;
-    return true;
+  if (!isSupabaseMode()) return false;
+  const supabase = getSupabase();
+  const { data: sessionData } = await supabase.auth.getUser();
+  const uid = sessionData?.user?.id;
+  if (!uid) {
+    const err = new Error("Not authenticated");
+    err.status = 401;
+    throw err;
   }
-  const res = await apiFetch(`/api/courses/${encodeURIComponent(id)}/enroll`, { method: "POST" });
-  if (!res.ok) throw new Error("Failed to enroll");
+  const { error } = await supabase
+    .from("enrollments")
+    .upsert({ user_id: uid, course_id: id, status: "enrolled" }, { onConflict: "user_id,course_id" });
+  if (error) throw error;
   return true;
 }
 
@@ -104,24 +106,20 @@ export async function enroll(id) {
  * Mark course started for current user.
  */
 export async function start(id) {
-  if (isSupabaseMode()) {
-    const supabase = getSupabase();
-    const { data: sessionData } = await supabase.auth.getUser();
-    const uid = sessionData?.user?.id;
-    if (!uid) {
-      const err = new Error("Not authenticated");
-      err.status = 401;
-      throw err;
-    }
-    await supabase.from("enrollments").upsert({ user_id: uid, course_id: id, status: "in_progress" }, { onConflict: "user_id,course_id" });
-    const { error } = await supabase
-      .from("user_course_progress")
-      .upsert({ user_id: uid, course_id: id, status: "in_progress", progress_percent: 5 }, { onConflict: "user_id,course_id" });
-    if (error) throw error;
-    return true;
+  if (!isSupabaseMode()) return false;
+  const supabase = getSupabase();
+  const { data: sessionData } = await supabase.auth.getUser();
+  const uid = sessionData?.user?.id;
+  if (!uid) {
+    const err = new Error("Not authenticated");
+    err.status = 401;
+    throw err;
   }
-  const res = await apiFetch(`/api/courses/${encodeURIComponent(id)}/start`, { method: "POST" });
-  if (!res.ok) throw new Error("Failed to start");
+  await supabase.from("enrollments").upsert({ user_id: uid, course_id: id, status: "in_progress" }, { onConflict: "user_id,course_id" });
+  const { error } = await supabase
+    .from("user_course_progress")
+    .upsert({ user_id: uid, course_id: id, status: "in_progress", progress_percent: 5 }, { onConflict: "user_id,course_id" });
+  if (error) throw error;
   return true;
 }
 
@@ -131,23 +129,19 @@ export async function start(id) {
  * Mark course completed for current user.
  */
 export async function complete(id) {
-  if (isSupabaseMode()) {
-    const supabase = getSupabase();
-    const { data: sessionData } = await supabase.auth.getUser();
-    const uid = sessionData?.user?.id;
-    if (!uid) {
-      const err = new Error("Not authenticated");
-      err.status = 401;
-      throw err;
-    }
-    await supabase.from("enrollments").upsert({ user_id: uid, course_id: id, status: "completed" }, { onConflict: "user_id,course_id" });
-    const { error } = await supabase
-      .from("user_course_progress")
-      .upsert({ user_id: uid, course_id: id, status: "completed", progress_percent: 100 }, { onConflict: "user_id,course_id" });
-    if (error) throw error;
-    return true;
+  if (!isSupabaseMode()) return false;
+  const supabase = getSupabase();
+  const { data: sessionData } = await supabase.auth.getUser();
+  const uid = sessionData?.user?.id;
+  if (!uid) {
+    const err = new Error("Not authenticated");
+    err.status = 401;
+    throw err;
   }
-  const res = await apiFetch(`/api/courses/${encodeURIComponent(id)}/complete`, { method: "POST" });
-  if (!res.ok) throw new Error("Failed to complete");
+  await supabase.from("enrollments").upsert({ user_id: uid, course_id: id, status: "completed" }, { onConflict: "user_id,course_id" });
+  const { error } = await supabase
+    .from("user_course_progress")
+    .upsert({ user_id: uid, course_id: id, status: "completed", progress_percent: 100 }, { onConflict: "user_id,course_id" });
+  if (error) throw error;
   return true;
 }

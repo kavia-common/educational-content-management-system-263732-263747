@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabaseClient';
+import { getSupabase, isSupabaseMode } from '../lib/supabaseClient';
 
 /**
  * PUBLIC_INTERFACE
@@ -6,15 +6,21 @@ import { supabase } from '../lib/supabaseClient';
  * List lessons for a given course id ordered by position.
  */
 export async function listLessonsByCourse(courseId) {
-  /** Fetch lessons by course id */
-  const { data, error } = await supabase
-    .from('lessons')
-    .select('id, title, description, video_url, course_id, position, thumbnail_url')
-    .eq('course_id', courseId)
-    .order('position', { ascending: true });
-
-  if (error) throw error;
-  return data || [];
+  if (!isSupabaseMode()) return [];
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('lessons')
+      .select('id, title, description, video_url, course_id, position, thumbnail_url')
+      .eq('course_id', courseId)
+      .order('position', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('listLessonsByCourse fallback to empty due to error:', e?.message || e);
+    return [];
+  }
 }
 
 /**
@@ -23,15 +29,21 @@ export async function listLessonsByCourse(courseId) {
  * Fetch a single lesson by id.
  */
 export async function getLessonById(id) {
-  /** Fetch lesson by id */
-  const { data, error } = await supabase
-    .from('lessons')
-    .select('id, title, description, video_url, course_id, position, thumbnail_url')
-    .eq('id', id)
-    .single();
-
-  if (error) throw error;
-  return data;
+  if (!isSupabaseMode()) return null;
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('lessons')
+      .select('id, title, description, video_url, course_id, position, thumbnail_url')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return data;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('getLessonById returning null due to error:', e?.message || e);
+    return null;
+  }
 }
 
 /**
@@ -40,7 +52,7 @@ export async function getLessonById(id) {
  * Admin upsert for a lesson.
  */
 export async function upsertLesson(payload) {
-  /** Insert or update lesson; relies on RLS allowing admin role. */
+  const supabase = getSupabase();
   const { data, error } = await supabase.from('lessons').upsert(payload).select().single();
   if (error) throw error;
   return data;
@@ -52,7 +64,7 @@ export async function upsertLesson(payload) {
  * Admin delete a lesson by id.
  */
 export async function deleteLesson(id) {
-  /** Delete lesson by id */
+  const supabase = getSupabase();
   const { error } = await supabase.from('lessons').delete().eq('id', id);
   if (error) throw error;
   return true;
