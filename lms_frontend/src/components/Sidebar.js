@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext";
 export default function Sidebar() {
   /** Sidebar navigation for main sections. */
   const { user } = useAuth();
+  const canAuthor = user?.role === "admin" || user?.role === "instructor";
 
   return (
     <aside className="sidebar">
@@ -34,6 +35,20 @@ export default function Sidebar() {
         <NavLink to="/grades" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
           Grades
         </NavLink>
+
+        {canAuthor && (
+          <>
+            <div className="page-subtitle" style={{ margin: "12px 8px 4px", color: "#8FA0B8" }}>
+              Authoring
+            </div>
+            <NavLink to="/authoring/paths" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
+              Manage Paths
+            </NavLink>
+            <NavLink to="/authoring/courses" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
+              Manage Courses
+            </NavLink>
+          </>
+        )}
       </nav>
     </aside>
   );

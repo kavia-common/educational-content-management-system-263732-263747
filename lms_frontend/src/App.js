@@ -18,6 +18,8 @@ import { applyCssVariables } from "./theme";
 import "./App.css";
 import { useAuth } from "./context/AuthContext";
 import { DashboardProvider } from "./context/DashboardContext";
+import PathsAuthoringPage from "./pages/authoring/PathsAuthoringPage";
+import CoursesAuthoringPage from "./pages/authoring/CoursesAuthoringPage";
 
 // Admin guard component
 function AdminRoute({ children }) {
@@ -31,6 +33,25 @@ function AdminRoute({ children }) {
       <div style={{ padding: 24 }}>
         <h2 className="page-title">Unauthorized</h2>
         <p className="page-subtitle">You do not have access to this page.</p>
+      </div>
+    );
+  }
+  return children;
+}
+
+// PUBLIC_INTERFACE
+function AuthorRoute({ children }) {
+  /**
+   * Route guard for authoring: allows roles 'admin' and 'instructor' only.
+   */
+  const { user, initializing } = useAuth();
+  if (initializing) return <div style={{ padding: 24 }}>Loading...</div>;
+  const allowed = user?.role === "admin" || user?.role === "instructor";
+  if (!allowed) {
+    return (
+      <div style={{ padding: 24 }}>
+        <h2 className="page-title">Unauthorized</h2>
+        <p className="page-subtitle">Only instructors and admins can access authoring tools.</p>
       </div>
     );
   }
@@ -136,6 +157,32 @@ function App() {
                 <AppLayout>
                   <CoursePlayerPage />
                 </AppLayout>
+              </PrivateRoute>
+            }
+          />
+
+          {/* Authoring (instructor/admin) */}
+          <Route
+            path="/authoring/paths"
+            element={
+              <PrivateRoute>
+                <AuthorRoute>
+                  <AppLayout>
+                    <PathsAuthoringPage />
+                  </AppLayout>
+                </AuthorRoute>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/authoring/courses"
+            element={
+              <PrivateRoute>
+                <AuthorRoute>
+                  <AppLayout>
+                    <CoursesAuthoringPage />
+                  </AppLayout>
+                </AuthorRoute>
               </PrivateRoute>
             }
           />
