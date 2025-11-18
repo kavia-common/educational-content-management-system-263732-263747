@@ -197,6 +197,7 @@ function App() {
               />
               {/* Health/status page - public, no secrets */}
               <Route path={process.env.REACT_APP_HEALTHCHECK_PATH || "/health"} element={<HealthPage />} />
+              {/* Fallback: any unknown path routes to dashboard (guarded) */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </DashboardProvider>

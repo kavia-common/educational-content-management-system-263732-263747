@@ -6,6 +6,10 @@ import { useAuth } from "../context/AuthContext";
  * PUBLIC_INTERFACE
  * ProtectedRoute: Guards children based on auth status and role.
  *
+ * Behavior:
+ * - If not authenticated, redirects to /signin?next=<encoded current path+query>.
+ * - After successful sign-in, SignInPage will redirect to the intended protected page.
+ *
  * Props:
  * - children: ReactNode
  * - requireRole?: 'admin' | 'instructor' | 'student'

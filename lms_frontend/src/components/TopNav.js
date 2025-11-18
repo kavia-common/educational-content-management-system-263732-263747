@@ -19,7 +19,7 @@ export default function TopNav() {
     <header className="topnav" role="banner">
       <div className="brand" aria-label="OceanLMS Home">
         <span className="brand-dot" aria-hidden="true" />
-        <a href="/dashboard" className="brand-name" aria-label="Go to dashboard">
+        <a href="/" className="brand-name" aria-label="Go to home">
           OceanLMS
         </a>
       </div>

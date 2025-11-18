@@ -4,7 +4,8 @@ import "../components/layout.css";
 // PUBLIC_INTERFACE
 export default function LoginPage() {
   /**
-   * Auth is disabled. If a user lands here by old links, redirect to dashboard.
+   * Legacy route: If a user lands here by old links (/login), redirect to next or /dashboard.
+   * Active sign-in lives at /signin and supports ?next redirect.
    */
   const next = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
