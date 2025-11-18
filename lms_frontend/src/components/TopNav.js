@@ -24,6 +24,9 @@ export default function TopNav() {
         </a>
       </div>
       <div className="actions" role="navigation" aria-label="User">
+        <a className="btn" style={{ background: "#ffffff", color: "#111827", border: "1px solid var(--color-border)" }} href="/health" aria-label="Diagnostics and health">
+          Diagnostics
+        </a>
         <div className="user-badge" title={user?.email || displayName} aria-label={`User: ${displayName}`}>
           <span className="avatar" aria-hidden="true">{avatarLetter}</span>
           <span className="user-name">{displayName}</span>
