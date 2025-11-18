@@ -23,10 +23,16 @@ import HealthPage from "./pages/HealthPage";
 import Dashboard from "./pages/Dashboard";
 import PathCourses from "./pages/PathCourses";
 import CourseModules from "./pages/CourseModules";
+import ProtectedRoute from "./components/ProtectedRoute";
+import SignInPage from "./pages/SignInPage";
+import SignUpPage from "./pages/SignUpPage";
+import OAuthCallbackPage from "./pages/OAuthCallbackPage";
+import AccountPage from "./pages/AccountPage";
 
 /**
- * In guest mode, all routes are public. Admin/Authoring routes are accessible
- * to the default guest profile to keep demo pages reachable.
+ * Main app with Supabase-auth routes.
+ * - Public: /, /signin, /signup, /health
+ * - Protected: /dashboard, /paths, /courses, /assignments, /grades, authoring and admin dashboards
  */
 
 // PUBLIC_INTERFACE
@@ -42,6 +48,7 @@ function App() {
         <FeatureFlagsProvider>
           <DashboardProvider>
             <Routes>
+              {/* Public landing shows dashboard/paths teaser */}
               <Route
                 path="/"
                 element={
@@ -50,28 +57,41 @@ function App() {
                   </AppLayout>
                 }
               />
+
+              {/* Auth routes */}
+              <Route path="/signin" element={<SignInPage />} />
+              <Route path="/signup" element={<SignUpPage />} />
+              <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+
+              {/* Protected app pages */}
               <Route
                 path="/dashboard"
                 element={
-                  <AppLayout>
-                    <DashboardPage />
-                  </AppLayout>
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <DashboardPage />
+                    </AppLayout>
+                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/employee/dashboard"
                 element={
-                  <AppLayout>
-                    <EmployeeDashboardPage />
-                  </AppLayout>
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <EmployeeDashboardPage />
+                    </AppLayout>
+                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/admin/dashboard"
                 element={
-                  <AppLayout>
-                    <AdminDashboardPage />
-                  </AppLayout>
+                  <ProtectedRoute requireRole="admin">
+                    <AppLayout>
+                      <AdminDashboardPage />
+                    </AppLayout>
+                  </ProtectedRoute>
                 }
               />
 
@@ -79,17 +99,21 @@ function App() {
               <Route
                 path="/paths"
                 element={
-                  <AppLayout>
-                    <PathsListPage />
-                  </AppLayout>
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <PathsListPage />
+                    </AppLayout>
+                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/paths/:id"
                 element={
-                  <AppLayout>
-                    <PathCourses />
-                  </AppLayout>
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <PathCourses />
+                    </AppLayout>
+                  </ProtectedRoute>
                 }
               />
 
@@ -97,18 +121,22 @@ function App() {
               <Route
                 path="/courses"
                 element={
-                  <AppLayout>
-                    <CoursesPage />
-                  </AppLayout>
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <CoursesPage />
+                    </AppLayout>
+                  </ProtectedRoute>
                 }
               />
               {/* Player route for course content */}
               <Route
                 path="/courses/:id"
                 element={
-                  <AppLayout>
-                    <CourseModules />
-                  </AppLayout>
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <CourseModules />
+                    </AppLayout>
+                  </ProtectedRoute>
                 }
               />
 
@@ -116,17 +144,33 @@ function App() {
               <Route
                 path="/authoring/paths"
                 element={
-                  <AppLayout>
-                    <PathsAuthoringPage />
-                  </AppLayout>
+                  <ProtectedRoute requireRole="admin">
+                    <AppLayout>
+                      <PathsAuthoringPage />
+                    </AppLayout>
+                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/authoring/courses"
                 element={
-                  <AppLayout>
-                    <CoursesAuthoringPage />
-                  </AppLayout>
+                  <ProtectedRoute requireRole="admin">
+                    <AppLayout>
+                      <CoursesAuthoringPage />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Account */}
+              <Route
+                path="/account"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <AccountPage />
+                    </AppLayout>
+                  </ProtectedRoute>
                 }
               />
 
@@ -134,17 +178,21 @@ function App() {
               <Route
                 path="/assignments"
                 element={
-                  <AppLayout>
-                    <AssignmentsPage />
-                  </AppLayout>
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <AssignmentsPage />
+                    </AppLayout>
+                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/grades"
                 element={
-                  <AppLayout>
-                    <GradesPage />
-                  </AppLayout>
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <GradesPage />
+                    </AppLayout>
+                  </ProtectedRoute>
                 }
               />
               {/* Health/status page - public, no secrets */}
