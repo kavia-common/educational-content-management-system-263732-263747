@@ -18,6 +18,29 @@ Security notes:
 - In Supabase mode, the anon key is considered public. Ensure tight RLS policies.
 - In proxy mode, the browser never sees Supabase keys or tokens.
 
+## Quick Start (Prototype with Supabase)
+
+1) Install dependencies:
+   npm install
+
+2) Create .env in lms_frontend root with:
+   REACT_APP_SUPABASE_URL=<your_supabase_project_url>
+   REACT_APP_SUPABASE_KEY=<anon_or_prototype_key>
+
+   Warning: Using a service role key in the frontend is unsafe. This setup is for prototype/demo only.
+   For production, use the anon key with strict RLS or route through a secure backend proxy.
+
+3) Start:
+   npm start
+
+4) Open:
+   - "/" Dashboard (shows Learning Paths)
+   - "/paths/:id" Courses in a path
+   - "/courses/:id" Course modules with simple video player
+
+Environment guards:
+- If REACT_APP_SUPABASE_URL or REACT_APP_SUPABASE_KEY are missing, the console warns to aid debugging.
+
 ## Current Demo Configuration: Authentication Disabled
 
 For this deployment, sign-in is disabled and the app runs in guest/anonymous mode:
@@ -32,35 +55,29 @@ Important implications:
   - Allow public access in your backend/proxy for demo purposes, or
   - Re-enable authentication before performing write operations.
 
-How to re-enable authentication later:
-- Restore PrivateRoute and role checks in src/context/AuthContext.js and src/App.js.
-- Re-add /login and /oauth/callback routes in src/App.js.
-- Switch AuthContext to call backend /auth/me or use Supabase mode (see sections below).
-- Show login/logout controls in TopNav and role-aware links in Sidebar.
-
 ## Key Characteristics
 - Routing with react-router-dom (v6)
 - Ocean Professional theme (blue primary, amber secondary)
-- Core pages: /dashboard, /paths, /paths/:id, /courses, /courses/:id, /assignments, /grades
-  - Note: /login is intentionally not used while auth is disabled.
+- Core pages: / (Dashboard), /paths, /paths/:id, /courses, /courses/:id, /assignments, /grades
 
 ## Environment Variables
 Create a `.env` using `.env.example` as reference:
 
-Required/general:
-- REACT_APP_FRONTEND_URL: This app URL used for redirects (e.g., https://app.oceanlms.example.com)
-- REACT_APP_BACKEND_URL: Base URL for backend proxy (e.g., https://api.oceanlms.example.com)
-- REACT_APP_FEATURE_FLAGS: JSON object or comma list
-  - Enable Supabase mode by adding FLAG_SUPABASE_MODE=true (in JSON) or FLAG_SUPABASE_MODE (in list)
-- REACT_APP_HEALTHCHECK_PATH: optional health path
-- REACT_APP_EXPERIMENTS_ENABLED: "true"/"false"
-
-Supabase mode (only used when FLAG_SUPABASE_MODE is enabled):
+Prototype Supabase mode (used by newly added components):
 - REACT_APP_SUPABASE_URL
-- REACT_APP_SUPABASE_ANON_KEY
+- REACT_APP_SUPABASE_KEY  (prototype only; prefer anon key with RLS)
 
-Additional container variables may exist:
-- REACT_APP_API_BASE, REACT_APP_WS_URL, REACT_APP_NODE_ENV, REACT_APP_NEXT_TELEMETRY_DISABLED, REACT_APP_ENABLE_SOURCE_MAPS, REACT_APP_PORT, REACT_APP_TRUST_PROXY
+General (existing):
+- REACT_APP_FRONTEND_URL
+- REACT_APP_BACKEND_URL
+- REACT_APP_FEATURE_FLAGS
+- REACT_APP_HEALTHCHECK_PATH
+- REACT_APP_EXPERIMENTS_ENABLED
+- and other container variables as needed.
+
+Security warning:
+- Do not use the service role key in the frontend.
+- This repo’s supabaseClient is for prototype/demos. Migrate to anon key + RLS or a backend proxy later.
 
 ## Scripts
 - `npm start` - start dev server
@@ -68,66 +85,18 @@ Additional container variables may exist:
 - `npm run build` - production build
 
 ## Architecture
-- src/lib/supabaseClient.js: client SDK and feature flag check (not used while auth is disabled)
-- src/apiClient.js: backend proxy fetch wrapper (no 401 redirect in guest mode)
-- src/context/AuthContext.js: guest/anonymous mode default user with role "admin" for full demo access
-- src/services/*: paths/courses/progress switch between Supabase and proxy endpoints
-- src/layouts and components: UI
-- src/theme.js: theme variables applied to :root
+- src/supabaseClient.js: browser client using env vars (prototype mode)
+- src/components/LearningPaths.jsx: fetch learning_paths
+- src/components/Courses.jsx: fetch by path_id
+- src/components/Modules.jsx: fetch by course_id
+- src/components/VideoPlayer.jsx: simple HTML5 player
+- src/pages/Dashboard.jsx, PathCourses.jsx, CourseModules.jsx: new pages and routing
+- src/apiClient.js: backend proxy fetch wrapper
+- src/services/*: existing services for proxy/Supabase (advanced flows)
+- src/theme.js and src/styles/theme.css: Ocean Professional theme application
 
-## Supabase Browser Mode
-Enable with REACT_APP_FEATURE_FLAGS containing FLAG_SUPABASE_MODE=true (if you re-enable auth).
-
-Auth flow:
-- On load, AuthContext calls supabase.auth.getSession() and subscribes to onAuthStateChange
-- Profile role is fetched from 'profiles' table by user id (expects profiles.id = auth.user.id)
-- Role-based UI gates rely on profile.role (admin, instructor, student)
-
-Tables and RLS assumptions:
-- profiles(id uuid pk, full_name text, role text) with RLS: user can select/update own row
-- learning_paths(id uuid pk, title text, description text, ...): RLS: all authenticated can select; inserts/updates limited to instructors/admins
-- courses(id uuid pk, title text, description text, instructor text, path_id uuid, video_url text, embed_url text): RLS: select for all authenticated; writes limited to instructors/admins
-- enrollments(user_id uuid, course_id uuid, status text, created_at timestamptz): RLS: user can manage own rows
-- user_course_progress(user_id uuid, course_id uuid, progress_percent int, status text, time_spent_seconds int, updated_at timestamptz): RLS: user can manage own rows
-- course_lessons(id uuid pk default gen_random_uuid(), course_id uuid references courses(id), title text, thumbnail text null, duration int null, sequence int not null)
-  - Unique constraint recommended on (course_id, title) to support idempotent upserts
-  - RLS: select for authenticated users; insert/update/delete restricted to instructors/admins
-
-Security considerations:
-- Only anon key in frontend; rely on RLS to scope data
-- Never expose service role key
-- Validate RLS policies to ensure users can only see their own enrollments/progress and public course/path data
-
-### Seeding Course Lessons (Frontend-only, Feature-flagged)
-This app ships with a lightweight seeding utility to insert static lesson data into the `course_lessons` table using the Supabase browser SDK.
-
-Prerequisites:
-- Supabase mode enabled: include `FLAG_SUPABASE_MODE=true` in `REACT_APP_FEATURE_FLAGS`
-- Allow seed (admin-only): include `FLAG_ALLOW_SEED=true` in `REACT_APP_FEATURE_FLAGS`
-- Ensure `course_lessons` table exists with RLS and a unique index on `(course_id, title)`
-
-How to run:
-1) Start the app with Supabase flags enabled. Example:
-   REACT_APP_FEATURE_FLAGS='{"FLAG_SUPABASE_MODE":true,"FLAG_ALLOW_SEED":true}'
-2) Navigate to the Health page (`/health` or the configured `REACT_APP_HEALTHCHECK_PATH`).
-3) Click "Seed Course Lessons". A concise success or error message will appear.
-
-Notes:
-- The seeder uses upsert with `onConflict: "course_id,title"` meaning repeated runs are idempotent.
-- Default data is embedded in `src/seeds/lessonsSeed.js`. You can supply your own fixtures by importing and calling `seedLessons(customSets)` in code, or by editing `src/seeds/fixtures/lessons.json` and adapting the importer.
-- No secrets are logged; errors are displayed briefly without sensitive content.
-
-Schema (SQL DDL example):
-See assets/supabase.md for a full SQL snippet including RLS policies and uniqueness constraints.
-
-## Backend Proxy Mode (Summary)
-Same as described previously (see kavia-docs/backend-proxy-contract.md). When auth is re-enabled the app will use:
-- GET /auth/me, /auth/login, /auth/logout
-- /api/... endpoints for data
-
-## Notes
-- While auth is disabled, RLS-dependent actions may fail unless public access is allowed server-side.
-- For production, re-enable authentication and restore route guards.
-
-Player routing:
-- The player lives at `/courses/:id` (CoursePlayerPage). Links from course lists and learning path courses point here for a consistent start/complete experience.
+## Migration Recommendation
+After prototyping:
+- Replace REACT_APP_SUPABASE_KEY with the anon key and enforce RLS
+- Or switch to backend proxy mode per kavia-docs/backend-proxy-contract.md
+- Never ship a service role key in frontend builds

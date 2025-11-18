@@ -14,11 +14,15 @@ import PathDetailPage from "./pages/PathDetailPage";
 import CoursePlayerPage from "./pages/CoursePlayerPage";
 import { applyCssVariables } from "./theme";
 import "./App.css";
+import "./styles/theme.css";
 import { DashboardProvider } from "./context/DashboardContext";
 import PathsAuthoringPage from "./pages/authoring/PathsAuthoringPage";
 import CoursesAuthoringPage from "./pages/authoring/CoursesAuthoringPage";
 import { FeatureFlagsProvider } from "./context/FeatureFlagsContext";
 import HealthPage from "./pages/HealthPage";
+import Dashboard from "./pages/Dashboard";
+import PathCourses from "./pages/PathCourses";
+import CourseModules from "./pages/CourseModules";
 
 /**
  * In guest mode, all routes are public. Admin/Authoring routes are accessible
@@ -42,7 +46,7 @@ function App() {
                 path="/"
                 element={
                   <AppLayout>
-                    <DashboardPage />
+                    <Dashboard />
                   </AppLayout>
                 }
               />
@@ -84,7 +88,7 @@ function App() {
                 path="/paths/:id"
                 element={
                   <AppLayout>
-                    <PathDetailPage />
+                    <PathCourses />
                   </AppLayout>
                 }
               />
@@ -103,7 +107,7 @@ function App() {
                 path="/courses/:id"
                 element={
                   <AppLayout>
-                    <CoursePlayerPage />
+                    <CourseModules />
                   </AppLayout>
                 }
               />

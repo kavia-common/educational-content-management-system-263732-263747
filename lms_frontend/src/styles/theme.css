@@ -1,0 +1,19 @@
+:root {
+  --color-primary: #2563EB;
+  --color-secondary: #F59E0B;
+  --color-error: #EF4444;
+  --color-text: #111827;
+  --color-muted: #6B7280;
+  --color-bg: #f9fafb;
+  --color-surface: #ffffff;
+  --color-border: #E5E7EB;
+}
+
+.ocean-header {
+  background: linear-gradient(90deg, rgba(37,99,235,0.98), rgba(37,99,235,0.82));
+  color: #fff;
+}
+
+.ocean-link {
+  color: var(--color-primary);
+}
