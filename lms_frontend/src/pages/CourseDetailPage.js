@@ -83,12 +83,12 @@ export default function CourseDetailPage() {
           <span><strong>Instructor:</strong> {course?.instructor || "TBD"}</span>
           <div className="hstack" style={{ gap: 8 }}>
             {!course?.enrolled && (
-              <button className="btn btn-secondary" onClick={handleEnroll} disabled={working}>
+              <button className="btn btn-secondary" onClick={handleEnroll} disabled={working} aria-label="Enroll in course">
                 {working ? "Enrolling..." : "Enroll"}
               </button>
             )}
-            <Link className="btn btn-primary" to={`/courses/${id}`}>Open Player</Link>
-            <button className="btn btn-secondary" onClick={handleStart} disabled={working}>
+            <Link className="btn btn-primary" to={`/courses/${id}`} aria-label="Open course player">Open Player</Link>
+            <button className="btn btn-secondary" onClick={handleStart} disabled={working} aria-label="Start course">
               {working ? "Starting..." : "Start"}
             </button>
           </div>

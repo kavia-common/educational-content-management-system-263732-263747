@@ -13,6 +13,7 @@ import ProgressBar from "./ProgressBar";
 // PUBLIC_INTERFACE
 export default function CourseCard({ course, ctaLabel = "Open Course" }) {
   const pct = Math.max(0, Math.min(100, Number(course?.progressPercent) || 0));
+  const title = course?.title || "Course";
   return (
     <div className="card">
       <div className="hstack" style={{ gap: 12 }}>
@@ -37,11 +38,11 @@ export default function CourseCard({ course, ctaLabel = "Open Course" }) {
               fontWeight: 700,
             }}
           >
-            {String(course?.title || "CO").slice(0, 2).toUpperCase()}
+            {String(title || "CO").slice(0, 2).toUpperCase()}
           </div>
         )}
         <div style={{ flex: 1 }}>
-          <h3 style={{ margin: "4px 0 6px" }}>{course?.title || "Course"}</h3>
+          <h3 style={{ margin: "4px 0 6px" }}>{title}</h3>
           <p className="page-subtitle" style={{ margin: 0 }}>
             {course?.description || "Learn something new"}
           </p>
@@ -50,12 +51,12 @@ export default function CourseCard({ course, ctaLabel = "Open Course" }) {
             <span style={{ color: "var(--color-primary)", fontWeight: 600 }}>{Math.round(pct)}%</span>
           </div>
           <div style={{ marginTop: 8 }}>
-            <ProgressBar value={pct} label={`Progress for ${course?.title || "course"}`} />
+            <ProgressBar value={pct} label={`Progress for ${title}`} />
           </div>
         </div>
       </div>
       <div className="hstack" style={{ marginTop: 12 }}>
-        <Link className="btn btn-primary" to={`/courses/${course?.id || ""}`}>
+        <Link className="btn btn-primary" to={`/courses/${course?.id || ""}`} aria-label={`${ctaLabel} ${title}`}>
           {ctaLabel}
         </Link>
       </div>

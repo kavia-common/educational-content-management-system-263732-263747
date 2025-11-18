@@ -20,12 +20,12 @@ export default function ProgressBar({ value = 0, color = "var(--color-primary)",
       aria-label={label || "progress"}
       style={{
         width: "100%",
-        height: 10,
+        height: 12,
         borderRadius: 999,
-        background: "rgba(37, 99, 235, 0.12)",
         overflow: "hidden",
         outline: "2px solid transparent",
         outlineOffset: 2,
+        background: "linear-gradient(180deg, rgba(37,99,235,0.08), rgba(37,99,235,0.04))",
       }}
       tabIndex={0}
     >

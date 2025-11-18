@@ -10,6 +10,8 @@
 
   --radius: 12px;
   --shadow: 0 4px 12px rgba(0,0,0,0.06);
+
+  --focus-ring: 0 0 0 3px rgba(37,99,235,0.35), 0 0 0 6px rgba(255,255,255,0.9);
 }
 
 * { box-sizing: border-box; }
@@ -24,7 +26,20 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-a { color: var(--color-primary); }
+a { 
+  color: var(--color-primary); 
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* Generic focus visibility for links and inputs */
+a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: 8px;
+}
 
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;

@@ -37,7 +37,7 @@ export default function AssignmentsPage() {
             </div>
             <p className="page-subtitle">{a.courseTitle || "Course"}</p>
             <div className="hstack">
-              <button className="btn btn-primary">View</button>
+              <button className="btn btn-primary" aria-label={`View assignment ${a.title || a.id || ""}`}>View</button>
             </div>
           </div>
         ))}

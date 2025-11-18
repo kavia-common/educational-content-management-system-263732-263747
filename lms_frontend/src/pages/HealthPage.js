@@ -16,11 +16,11 @@ import { useFeatureFlags } from "../context/FeatureFlagsContext";
 export default function HealthPage() {
   const { flags, experimentsEnabled } = useFeatureFlags();
 
-  // Safely read version from build-time injected env if available via CRA
-  // CRA doesn't expose package.json directly; instead, rely on process.env for version fallback.
-  // Some pipelines inject REACT_APP_VERSION; otherwise show unknown.
+  // Avoid showing URLs, keys or any sensitive envs. Only expose safe, generic info.
   const version = process.env.REACT_APP_VERSION || process.env.npm_package_version || "unknown";
-  const env = process.env.REACT_APP_NODE_ENV || process.env.NODE_ENV || "development";
+  const env = (process.env.REACT_APP_NODE_ENV || process.env.NODE_ENV || "development")
+    .toString()
+    .replace(/[^a-zA-Z0-9-_]/g, ""); // sanitize printable
 
   const enabledFlags = useMemo(() => {
     const out = [];
@@ -36,7 +36,7 @@ export default function HealthPage() {
       <p className="page-subtitle">Application diagnostics (no secrets)</p>
 
       <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <div className="card">
+        <div className="card" role="status" aria-live="polite">
           <div className="hstack" style={{ justifyContent: "space-between" }}>
             <strong>Status</strong>
             <span style={{ color: "var(--color-primary)" }}>OK</span>
@@ -51,7 +51,7 @@ export default function HealthPage() {
         <div className="card">
           <div className="hstack" style={{ justifyContent: "space-between" }}>
             <strong>Environment</strong>
-            <span>{env}</span>
+            <span aria-label="Current environment">{env}</span>
           </div>
         </div>
         <div className="card">

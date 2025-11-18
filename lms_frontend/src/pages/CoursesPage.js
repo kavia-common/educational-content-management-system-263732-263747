@@ -73,7 +73,7 @@ export default function CoursesPage() {
               {c.description || "No description"}
             </p>
             <div className="hstack" style={{ marginTop: 12, gap: 8 }}>
-              <Link className="btn btn-primary" to={`/courses/${c.id}`}>
+              <Link className="btn btn-primary" to={`/courses/${c.id}`} aria-label={`${c.enrolled ? "Open" : "View"} ${c.title || "course"}`}>
                 {c.enrolled ? "Open" : "View"}
               </Link>
               {!c.enrolled && (
@@ -81,6 +81,7 @@ export default function CoursesPage() {
                   className="btn btn-secondary"
                   onClick={() => handleEnroll(c.id)}
                   disabled={workingId === c.id}
+                  aria-label={`Enroll in ${c.title || "course"}`}
                 >
                   {workingId === c.id ? "Enrolling..." : "Enroll"}
                 </button>

@@ -35,8 +35,8 @@ export default function LoginPage() {
         )}
 
         <div className="vstack" style={{ marginTop: 8 }}>
-          <button className="btn btn-primary" onClick={() => handleLogin("email")}>Continue with Email</button>
-          <button className="btn btn-secondary" onClick={() => handleLogin("google")}>Continue with Google</button>
+          <button className="btn btn-primary" onClick={() => handleLogin("email")} aria-label="Continue with email sign-in">Continue with Email</button>
+          <button className="btn btn-secondary" onClick={() => handleLogin("google")} aria-label="Continue with Google sign-in">Continue with Google</button>
         </div>
         <p className="page-subtitle" style={{ marginTop: 12 }}>After login, you will be redirected to: {next}</p>
       </div>

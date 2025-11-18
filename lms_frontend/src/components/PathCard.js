@@ -12,6 +12,7 @@ import "./layout.css";
 // PUBLIC_INTERFACE
 export default function PathCard({ path, ctaLabel = "View Path" }) {
   const pct = Math.max(0, Math.min(100, Number(path?.progressPercent) || 0));
+  const title = path?.title || "Learning Path";
   return (
     <div className="card">
       <div className="hstack" style={{ gap: 12 }}>
@@ -36,11 +37,11 @@ export default function PathCard({ path, ctaLabel = "View Path" }) {
               fontWeight: 700,
             }}
           >
-            {String(path?.title || "LP").slice(0, 2).toUpperCase()}
+            {String(title || "LP").slice(0, 2).toUpperCase()}
           </div>
         )}
         <div style={{ flex: 1 }}>
-          <h3 style={{ margin: "4px 0 6px" }}>{path?.title || "Learning Path"}</h3>
+          <h3 style={{ margin: "4px 0 6px" }}>{title}</h3>
           <p className="page-subtitle" style={{ margin: 0 }}>
             {path?.description || "Curated set of courses"}
           </p>
@@ -55,7 +56,7 @@ export default function PathCard({ path, ctaLabel = "View Path" }) {
         </div>
       </div>
       <div className="hstack" style={{ marginTop: 12 }}>
-        <Link className="btn btn-primary" to={`/paths/${path?.id || ""}`}>
+        <Link className="btn btn-primary" to={`/paths/${path?.id || ""}`} aria-label={`${ctaLabel} ${title}`}>
           {ctaLabel}
         </Link>
       </div>

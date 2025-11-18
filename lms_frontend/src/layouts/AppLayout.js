@@ -11,7 +11,7 @@ export default function AppLayout({ children }) {
       <TopNav />
       <div className="layout-shell">
         <Sidebar />
-        <main className="main">{children}</main>
+        <main className="main" role="main" tabIndex={-1}>{children}</main>
       </div>
     </>
   );

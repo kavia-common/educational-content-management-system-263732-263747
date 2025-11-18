@@ -131,7 +131,7 @@ export default function CoursePlayerPage() {
             </div>
             <ProgressBar value={pct} label="Course progress" />
             <div className="hstack" style={{ marginTop: 12, gap: 8 }}>
-              <button className="btn btn-primary" onClick={handleStart} disabled={working}>
+              <button className="btn btn-primary" onClick={handleStart} disabled={working} aria-label="Start course">
                 {working ? "Starting..." : "Start"}
               </button>
               <button
@@ -139,6 +139,7 @@ export default function CoursePlayerPage() {
                 onClick={handleComplete}
                 disabled={working || isComplete}
                 aria-disabled={working || isComplete}
+                aria-label={isComplete ? "Course completed" : "Mark course complete"}
               >
                 {isComplete ? "Completed" : working ? "Marking..." : "Mark Complete"}
               </button>

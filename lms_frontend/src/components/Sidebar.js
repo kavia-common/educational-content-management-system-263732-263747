@@ -11,30 +11,32 @@ export default function Sidebar() {
   const isAdmin = user?.role === "admin";
   const canAuthor = isAdmin || user?.role === "instructor";
 
+  const linkClass = ({ isActive }) => (isActive ? "side-link active" : "side-link");
+
   return (
-    <aside className="sidebar" aria-label="Primary">
+    <aside className="sidebar" aria-label="Primary navigation">
       <nav aria-live="polite" aria-busy={!isAuthed ? "true" : "false"}>
-        <NavLink to="/dashboard" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
+        <NavLink to="/dashboard" className={linkClass} aria-label="Dashboard">
           Dashboard
         </NavLink>
-        <NavLink to="/employee/dashboard" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
+        <NavLink to="/employee/dashboard" className={linkClass} aria-label="Employee Dashboard">
           Employee Dashboard
         </NavLink>
         {isAdmin && (
-          <NavLink to="/admin/dashboard" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
+          <NavLink to="/admin/dashboard" className={linkClass} aria-label="Admin Dashboard">
             Admin Dashboard
           </NavLink>
         )}
-        <NavLink to="/paths" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
+        <NavLink to="/paths" className={linkClass} aria-label="Learning Paths">
           Learning Paths
         </NavLink>
-        <NavLink to="/courses" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
+        <NavLink to="/courses" className={linkClass} aria-label="Courses">
           Courses
         </NavLink>
-        <NavLink to="/assignments" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
+        <NavLink to="/assignments" className={linkClass} aria-label="Assignments">
           Assignments
         </NavLink>
-        <NavLink to="/grades" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
+        <NavLink to="/grades" className={linkClass} aria-label="Grades">
           Grades
         </NavLink>
 
@@ -43,13 +45,13 @@ export default function Sidebar() {
             <div className="page-subtitle" style={{ margin: "12px 8px 4px", color: "#8FA0B8" }}>
               Authoring
             </div>
-            <NavLink to="/authoring/paths" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
+            <NavLink to="/authoring/paths" className={linkClass} aria-label="Manage Paths">
               Manage Paths
             </NavLink>
-            <NavLink to="/authoring/courses" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
+            <NavLink to="/authoring/courses" className={linkClass} aria-label="Manage Courses">
               Manage Courses
             </NavLink>
-            <NavLink to={process.env.REACT_APP_HEALTHCHECK_PATH || "/health"} className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
+            <NavLink to={process.env.REACT_APP_HEALTHCHECK_PATH || "/health"} className={linkClass} aria-label="System Health">
               System Health
             </NavLink>
           </>
