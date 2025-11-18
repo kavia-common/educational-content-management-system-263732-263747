@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import "./layout.css";
+import ProgressBar from "./ProgressBar";
 
 /**
  * Displays a Course summary card.
@@ -47,6 +48,9 @@ export default function CourseCard({ course, ctaLabel = "Open Course" }) {
           <div className="hstack" style={{ justifyContent: "space-between", marginTop: 8 }}>
             <span className="page-subtitle" style={{ margin: 0 }}>{course?.instructor || ""}</span>
             <span style={{ color: "var(--color-primary)", fontWeight: 600 }}>{Math.round(pct)}%</span>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <ProgressBar value={pct} label={`Progress for ${course?.title || "course"}`} />
           </div>
         </div>
       </div>

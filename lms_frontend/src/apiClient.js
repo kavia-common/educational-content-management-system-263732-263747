@@ -3,6 +3,8 @@ const BASE_URL =
   process.env.REACT_APP_API_BASE ||
   "http://localhost:8080";
 
+// Frontend must never initialize a Supabase client or expose anon/service keys.
+// All authentication/data calls go through the backend proxy using cookies.
 const FRONTEND_URL = process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000";
 
 function log(level, message, meta) {

@@ -1,13 +1,18 @@
 # OceanLMS Frontend
 
-React-based LMS frontend with cookie-based authentication via a secure backend (no Supabase client or anon key used on the client).
+React-based LMS frontend with cookie-based authentication via a secure backend.
+
+Security stance:
+- No Supabase client SDK is initialized in the browser.
+- No Supabase anon or service keys are present anywhere in frontend code or responses.
+- All authentication and data access go through backend proxy endpoints using HTTP-only cookies.
 
 ## Key Characteristics
 - Routing with react-router-dom (v6)
 - Cookie-based auth (GET /auth/me, GET /auth/login?provider=..., POST /auth/logout)
 - API client sends credentials and redirects to /login on 401
 - Ocean Professional theme (blue primary, amber secondary)
-- Core pages: /login, /oauth/callback, /dashboard, /courses, /courses/:id, /assignments, /grades
+- Core pages: /login, /oauth/callback, /dashboard, /paths, /paths/:id, /courses, /courses/:id, /assignments, /grades
 
 ## Environment Variables
 Create a `.env` using `.env.example` as reference:
@@ -64,6 +69,10 @@ Example data proxy endpoints:
 - GET /api/assignments -> [ { id, title, courseTitle, dueDate } ]
 - GET /api/grades -> [ { id, courseTitle, overall, updatedAt } ]
 - GET /api/dashboard/summary -> { activeCourses, assignmentsDue, avgGrade }
+- GET /api/learning-paths -> [ { id, title, description, progressPercent } ]
+- GET /api/learning-paths/:id -> { id, title, description }
+- GET /api/learning-paths/:id/courses -> [ { id, title, enrolled, progressPercent } ]
+- POST /api/courses/:id/enroll|start|complete -> 204|200
 
 See kavia-docs/backend-proxy-contract.md for full details.
 
@@ -73,4 +82,7 @@ Backend must implement:
 - GET /auth/login?provider=<prov>&redirect_to=<url>
 - GET /auth/callback (sets session cookie then redirects to FE /oauth/callback)
 - POST /auth/logout
-- Data proxies used by pages: /courses, /courses/:id, /assignments, /grades, /dashboard/summary
+- Data proxies used by pages: /api/courses, /api/courses/:id, /api/learning-paths, /api/learning-paths/:id, /api/learning-paths/:id/courses, /assignments, /grades, /dashboard/summary
+
+Player routing:
+- The player lives at `/courses/:id` (CoursePlayerPage). Links from course lists and learning path courses point here for a consistent start/complete experience.
