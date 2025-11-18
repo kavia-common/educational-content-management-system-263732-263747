@@ -19,6 +19,7 @@ import PathsAuthoringPage from "./pages/authoring/PathsAuthoringPage";
 import CoursesAuthoringPage from "./pages/authoring/CoursesAuthoringPage";
 import { FeatureFlagsProvider } from "./context/FeatureFlagsContext";
 import HealthPage from "./pages/HealthPage";
+import AuthRoute from "./components/AuthRoute.jsx";
 
 /**
  * In guest mode, all routes are public. Admin/Authoring routes are accessible
@@ -71,44 +72,52 @@ function App() {
                 }
               />
 
-              {/* Learning Paths */}
+              {/* Learning Paths (protected) */}
               <Route
                 path="/paths"
                 element={
-                  <AppLayout>
-                    <PathsListPage />
-                  </AppLayout>
+                  <AuthRoute>
+                    <AppLayout>
+                      <PathsListPage />
+                    </AppLayout>
+                  </AuthRoute>
                 }
               />
               <Route
                 path="/paths/:id"
                 element={
-                  <AppLayout>
-                    <PathDetailPage />
-                  </AppLayout>
+                  <AuthRoute>
+                    <AppLayout>
+                      <PathDetailPage />
+                    </AppLayout>
+                  </AuthRoute>
                 }
               />
 
-              {/* Courses */}
+              {/* Courses (protected) */}
               <Route
                 path="/courses"
                 element={
-                  <AppLayout>
-                    <CoursesPage />
-                  </AppLayout>
+                  <AuthRoute>
+                    <AppLayout>
+                      <CoursesPage />
+                    </AppLayout>
+                  </AuthRoute>
                 }
               />
-              {/* Player route for course content */}
+              {/* Player route for course content (protected) */}
               <Route
                 path="/courses/:id"
                 element={
-                  <AppLayout>
-                    <CoursePlayerPage />
-                  </AppLayout>
+                  <AuthRoute>
+                    <AppLayout>
+                      <CoursePlayerPage />
+                    </AppLayout>
+                  </AuthRoute>
                 }
               />
 
-              {/* Authoring */}
+              {/* Authoring (leave public in guest mode) */}
               <Route
                 path="/authoring/paths"
                 element={
@@ -126,21 +135,25 @@ function App() {
                 }
               />
 
-              {/* Other sections */}
+              {/* Other sections (protected per request) */}
               <Route
                 path="/assignments"
                 element={
-                  <AppLayout>
-                    <AssignmentsPage />
-                  </AppLayout>
+                  <AuthRoute>
+                    <AppLayout>
+                      <AssignmentsPage />
+                    </AppLayout>
+                  </AuthRoute>
                 }
               />
               <Route
                 path="/grades"
                 element={
-                  <AppLayout>
-                    <GradesPage />
-                  </AppLayout>
+                  <AuthRoute>
+                    <AppLayout>
+                      <GradesPage />
+                    </AppLayout>
+                  </AuthRoute>
                 }
               />
               {/* Health/status page - public, no secrets */}
