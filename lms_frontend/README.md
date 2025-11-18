@@ -23,6 +23,13 @@ Create a `.env` using `.env.example` as reference:
 Additional container variables that may be present:
 - REACT_APP_API_BASE, REACT_APP_WS_URL, REACT_APP_NODE_ENV, REACT_APP_NEXT_TELEMETRY_DISABLED, REACT_APP_ENABLE_SOURCE_MAPS, REACT_APP_PORT, REACT_APP_TRUST_PROXY, REACT_APP_HEALTHCHECK_PATH, REACT_APP_FEATURE_FLAGS, REACT_APP_EXPERIMENTS_ENABLED
 
+Feature flags:
+- REACT_APP_FEATURE_FLAGS: JSON object or comma list. Examples:
+  - JSON: {"charts": true, "newDashboard": false}
+  - List: charts,newDashboard
+- REACT_APP_EXPERIMENTS_ENABLED: "true"/"false"
+- Health page path: REACT_APP_HEALTHCHECK_PATH (default "/health")
+
 Never put Supabase URL/keys in frontend. All auth happens via backend.
 
 ## Scripts

@@ -49,6 +49,9 @@ export default function Sidebar() {
             <NavLink to="/authoring/courses" className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
               Manage Courses
             </NavLink>
+            <NavLink to={process.env.REACT_APP_HEALTHCHECK_PATH || "/health"} className={({ isActive }) => (isActive ? "side-link active" : "side-link")}>
+              System Health
+            </NavLink>
           </>
         )}
       </nav>

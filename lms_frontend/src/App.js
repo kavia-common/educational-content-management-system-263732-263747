@@ -20,6 +20,8 @@ import { useAuth } from "./context/AuthContext";
 import { DashboardProvider } from "./context/DashboardContext";
 import PathsAuthoringPage from "./pages/authoring/PathsAuthoringPage";
 import CoursesAuthoringPage from "./pages/authoring/CoursesAuthoringPage";
+import { FeatureFlagsProvider } from "./context/FeatureFlagsContext";
+import HealthPage from "./pages/HealthPage";
 
 // Admin guard component
 function AdminRoute({ children }) {
@@ -70,10 +72,11 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <DashboardProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+        <FeatureFlagsProvider>
+          <DashboardProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
 
           <Route
             path="/"
@@ -210,9 +213,12 @@ function App() {
               </PrivateRoute>
             }
           />
+          {/* Health/status page - public, no secrets */}
+          <Route path={process.env.REACT_APP_HEALTHCHECK_PATH || "/health"} element={<HealthPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
-        </DashboardProvider>
+          </DashboardProvider>
+        </FeatureFlagsProvider>
       </AuthProvider>
     </BrowserRouter>
   );

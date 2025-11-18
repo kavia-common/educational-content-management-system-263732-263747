@@ -6,6 +6,7 @@ import MiniBar from "../components/charts/MiniBar";
 import MiniPie from "../components/charts/MiniPie";
 import { progressService } from "../services/progressService";
 import { useDashboard } from "../context/DashboardContext";
+import { useFeatureFlags } from "../context/FeatureFlagsContext";
 
 // PUBLIC_INTERFACE
 export default function AdminDashboardPage() {
@@ -15,6 +16,7 @@ export default function AdminDashboardPage() {
    */
   const { user } = useAuth();
   const { version } = useDashboard();
+  const { isEnabled } = useFeatureFlags();
   const [summary, setSummary] = useState(null);
   const [completions, setCompletions] = useState([]);
   const [distribution, setDistribution] = useState([]);
@@ -78,57 +80,69 @@ export default function AdminDashboardPage() {
       <StatsTiles items={tiles} columns={4} />
 
       <div className="grid cols-3" style={{ marginTop: 12 }}>
-        <div className="card" style={{ gridColumn: "span 2" }}>
-          <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-            <strong>Course Completions</strong>
-            <span className="page-subtitle" style={{ margin: 0 }}>
-              Top courses by completions
-            </span>
-          </div>
-          {barData.length > 0 ? (
-            <MiniBar data={barData} height={160} />
-          ) : (
-            <div className="page-subtitle">No completion data.</div>
-          )}
-        </div>
-        <div className="card">
-          <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-            <strong>Progress Distribution</strong>
-            <span className="page-subtitle" style={{ margin: 0 }}>
-              Learner progress buckets
-            </span>
-          </div>
-          {pieData.length > 0 ? (
-            <div className="hstack" style={{ gap: 12 }}>
-              <MiniPie data={pieData} size={160} />
-              <div className="vstack" style={{ gap: 8 }}>
-                {pieData.map((d, i) => (
-                  <div key={i} className="hstack" style={{ alignItems: "center", gap: 8 }}>
-                    <span
-                      aria-hidden
-                      style={{
-                        display: "inline-block",
-                        width: 12,
-                        height: 12,
-                        borderRadius: 2,
-                        background:
-                          ["var(--color-primary)", "var(--color-secondary)", "#10B981", "#8B5CF6", "#EF4444"][
-                            i % 5
-                          ],
-                        boxShadow: "0 0 0 2px rgba(0,0,0,0.05)",
-                      }}
-                    />
-                    <span className="page-subtitle" style={{ margin: 0 }}>
-                      {d.name}: <strong style={{ color: "var(--color-text)" }}>{d.value}</strong>
-                    </span>
-                  </div>
-                ))}
+        { (isEnabled("charts") ?? true) && (
+          <>
+            <div className="card" style={{ gridColumn: "span 2" }}>
+              <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+                <strong>Course Completions</strong>
+                <span className="page-subtitle" style={{ margin: 0 }}>
+                  Top courses by completions
+                </span>
               </div>
+              {barData.length > 0 ? (
+                <MiniBar data={barData} height={160} />
+              ) : (
+                <div className="page-subtitle">No completion data.</div>
+              )}
             </div>
-          ) : (
-            <div className="page-subtitle">No distribution data.</div>
-          )}
-        </div>
+            <div className="card">
+              <div className="hstack" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+                <strong>Progress Distribution</strong>
+                <span className="page-subtitle" style={{ margin: 0 }}>
+                  Learner progress buckets
+                </span>
+              </div>
+              {pieData.length > 0 ? (
+                <div className="hstack" style={{ gap: 12 }}>
+                  <MiniPie data={pieData} size={160} />
+                  <div className="vstack" style={{ gap: 8 }}>
+                    {pieData.map((d, i) => (
+                      <div key={i} className="hstack" style={{ alignItems: "center", gap: 8 }}>
+                        <span
+                          aria-hidden
+                          style={{
+                            display: "inline-block",
+                            width: 12,
+                            height: 12,
+                            borderRadius: 2,
+                            background:
+                              ["var(--color-primary)", "var(--color-secondary)", "#10B981", "#8B5CF6", "#EF4444"][
+                                i % 5
+                              ],
+                            boxShadow: "0 0 0 2px rgba(0,0,0,0.05)",
+                          }}
+                        />
+                        <span className="page-subtitle" style={{ margin: 0 }}>
+                          {d.name}: <strong style={{ color: "var(--color-text)" }}>{d.value}</strong>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="page-subtitle">No distribution data.</div>
+              )}
+            </div>
+          </>
+        )}
+        { !(isEnabled("charts") ?? true) && (
+          <div className="card">
+            <strong>Charts disabled</strong>
+            <p className="page-subtitle" style={{ marginTop: 8 }}>
+              Charts are turned off by feature flag.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
