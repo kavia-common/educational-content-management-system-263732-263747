@@ -74,3 +74,22 @@ RLS examples:
 - npm start
 
 Set env vars before running. Charts render via simple SVG wrappers (no external lib).
+
+## Local Demo Data Mode
+
+The app supports a local, in-memory demo data mode to enable preview without configuring Supabase.
+
+How it works:
+- If either REACT_APP_SUPABASE_URL or REACT_APP_SUPABASE_KEY is missing or empty at build time, the app switches to local data mode automatically.
+- In local mode, services read from src/data/seed.js and no network calls are made.
+- A small banner appears at the top: "Local demo data mode — configure Supabase to load live data."
+
+Switch to Supabase (live data):
+1. Set the following environment variables in your .env file (or your environment):
+   - REACT_APP_SUPABASE_URL=<your-supabase-url>
+   - REACT_APP_SUPABASE_KEY=<your-supabase-anon-key>
+2. Restart your dev server: npm start
+
+Notes:
+- Existing Supabase auth and OAuth callback code remains intact for future enablement.
+- When Supabase is configured, the app will automatically use it and bypass the local seed data.

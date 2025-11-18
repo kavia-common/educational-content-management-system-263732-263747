@@ -1,11 +1,20 @@
 import { getSupabase, isSupabaseMode } from "../lib/supabaseClient";
+import { DATA_SOURCE } from "../lib/dataMode";
+import { courses as seedCourses } from "../data/seed";
 
 /**
  * PUBLIC_INTERFACE
  * listCourses
  * List all courses available.
+ * In local mode, returns seed courses with thumbnail mapped to thumbnail_url.
  */
 export async function listCourses() {
+  if (DATA_SOURCE === "local") {
+    return seedCourses.map((c) => ({
+      ...c,
+      thumbnail_url: c.thumbnail ?? c.thumbnail_url ?? null,
+    }));
+  }
   if (!isSupabaseMode()) return [];
   try {
     const supabase = getSupabase();
@@ -24,10 +33,53 @@ export async function listCourses() {
 
 /**
  * PUBLIC_INTERFACE
+ * listCoursesByPath
+ * List all courses for a given learning path id.
+ * In local mode, filters seed courses by path_id.
+ */
+export async function listCoursesByPath(pathId) {
+  if (DATA_SOURCE === "local") {
+    const pid = typeof pathId === "string" ? parseInt(pathId, 10) : pathId;
+    return seedCourses
+      .filter((c) => c.path_id === pid)
+      .map((c) => ({
+        ...c,
+        thumbnail_url: c.thumbnail ?? c.thumbnail_url ?? null,
+      }));
+  }
+  if (!isSupabaseMode()) return [];
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from("courses")
+      .select("id, title, description, thumbnail_url, path_id, created_at")
+      .eq("path_id", pathId)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("listCoursesByPath fallback to empty due to error:", e?.message || e);
+    return [];
+  }
+}
+
+/**
+ * PUBLIC_INTERFACE
  * getCourseById
- * Fetch a single course and its lessons separately for RLS compatibility.
+ * Fetch a single course (Supabase also fetches lessons in pages).
+ * In local mode, returns course without lessons; pages will fetch lessons via lessonsService.
  */
 export async function getCourseById(id) {
+  if (DATA_SOURCE === "local") {
+    const cid = typeof id === "string" ? parseInt(id, 10) : id;
+    const course = seedCourses.find((c) => c.id === cid);
+    if (!course) return null;
+    return {
+      ...course,
+      thumbnail_url: course.thumbnail ?? course.thumbnail_url ?? null,
+    };
+  }
   if (!isSupabaseMode()) return null;
   try {
     const supabase = getSupabase();
@@ -84,6 +136,7 @@ export async function deleteCourse(id) {
  * Enroll current user in course.
  */
 export async function enroll(id) {
+  if (DATA_SOURCE === "local") return true; // no-op in local mode
   if (!isSupabaseMode()) return false;
   const supabase = getSupabase();
   const { data: sessionData } = await supabase.auth.getUser();
@@ -106,6 +159,7 @@ export async function enroll(id) {
  * Mark course started for current user.
  */
 export async function start(id) {
+  if (DATA_SOURCE === "local") return true; // no-op in local mode
   if (!isSupabaseMode()) return false;
   const supabase = getSupabase();
   const { data: sessionData } = await supabase.auth.getUser();
@@ -129,6 +183,7 @@ export async function start(id) {
  * Mark course completed for current user.
  */
 export async function complete(id) {
+  if (DATA_SOURCE === "local") return true; // no-op in local mode
   if (!isSupabaseMode()) return false;
   const supabase = getSupabase();
   const { data: sessionData } = await supabase.auth.getUser();

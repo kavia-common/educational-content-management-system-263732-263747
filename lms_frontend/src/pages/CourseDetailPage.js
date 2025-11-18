@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getCourseById } from '../services/coursesService';
+import { listLessonsByCourse } from '../services/lessonsService';
 import Card from '../components/ui/Card';
-import { isSupabaseMode } from '../lib/supabaseClient';
 
 /**
  * PUBLIC_INTERFACE
@@ -12,17 +12,21 @@ import { isSupabaseMode } from '../lib/supabaseClient';
 export default function CourseDetailPage() {
   const { id } = useParams();
   const [course, setCourse] = useState(null);
+  const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isSupabaseMode()) {
-      setCourse(null);
-      setLoading(false);
-      return;
-    }
-    getCourseById(id)
-      .then((c) => setCourse(c))
-      .finally(() => setLoading(false));
+    let mounted = true;
+    Promise.all([getCourseById(id), listLessonsByCourse(id)])
+      .then(([c, ls]) => {
+        if (!mounted) return;
+        setCourse(c || null);
+        setLessons(Array.isArray(ls) ? ls : []);
+      })
+      .finally(() => mounted && setLoading(false));
+    return () => {
+      mounted = false;
+    };
   }, [id]);
 
   if (loading) return <div className="text-gray-500">Loading...</div>;
@@ -41,14 +45,14 @@ export default function CourseDetailPage() {
       </Card>
 
       <Card title="Lessons">
-        {(course.lessons || []).length === 0 ? (
+        {lessons.length === 0 ? (
           <div className="text-gray-600">No lessons yet.</div>
         ) : (
           <ul className="space-y-2">
-            {course.lessons.map((lesson) => (
+            {lessons.map((lesson) => (
               <li key={lesson.id} className="flex items-center justify-between">
                 <Link to={`/lessons/${lesson.id}`} className="text-blue-600 hover:underline">
-                  {lesson.position}. {lesson.title}
+                  {(lesson.position ?? lesson.order) ? `${lesson.position ?? lesson.order}. ` : ''}{lesson.title}
                 </Link>
                 <Link to={`/lessons/${lesson.id}`} className="text-sm text-gray-500 hover:text-gray-700">Open</Link>
               </li>
